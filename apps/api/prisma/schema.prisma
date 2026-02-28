@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              Int                        @id @default(autoincrement())
+  employeeId      String                     @unique
+  passwordHash    String
+  createdAt       DateTime                   @default(now())
+  locationChanges EquipmentLocationHistory[]
+  statusChanges   EquipmentStatusHistory[]
+}
+
+model Faculty {
+  id         Int         @id @default(autoincrement())
+  name       String
+  department String?
+  createdAt  DateTime    @default(now())
+  equipments Equipment[]
+}
+
+model Category {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  description String?
+  equipments  Equipment[]
+}
+
+model Room {
+  id                 Int                        @id @default(autoincrement())
+  name               String                     @unique
+  building           String?
+  floor              String?
+  equipmentLocations EquipmentLocationHistory[]
+}
+
+model Equipment {
+  id              Int                        @id @default(autoincrement())
+  serialNumber    String                     @unique
+  name            String
+  categoryId      Int
+  facultyId       Int
+  datePurchased   DateTime
+  createdAt       DateTime                   @default(now())
+  category        Category                   @relation(fields: [categoryId], references: [id])
+  faculty         Faculty                    @relation(fields: [facultyId], references: [id])
+  locationHistory EquipmentLocationHistory[]
+  statusHistory   EquipmentStatusHistory[]
+}
+
+model EquipmentStatusHistory {
+  id          Int       @id @default(autoincrement())
+  equipmentId Int
+  status      String
+  changedAt   DateTime  @default(now())
+  changedById Int?
+  notes       String?
+  changedBy   User?     @relation(fields: [changedById], references: [id])
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+}
+
+model EquipmentLocationHistory {
+  id           Int       @id @default(autoincrement())
+  equipmentId  Int
+  roomId       Int
+  assignedAt   DateTime  @default(now())
+  assignedById Int?
+  assignedBy   User?     @relation(fields: [assignedById], references: [id])
+  equipment    Equipment @relation(fields: [equipmentId], references: [id])
+  room         Room      @relation(fields: [roomId], references: [id])
+}
