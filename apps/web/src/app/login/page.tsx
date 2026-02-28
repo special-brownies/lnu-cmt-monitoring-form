@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import Image from 'next/image'
 import Link from 'next/link'
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getToken, setToken } from '@/lib/auth'
 
+type LoginType = 'admin' | 'faculty'
+
 type LoginResponse = {
   access_token?: string
   message?: string
@@ -16,17 +18,25 @@ type LoginResponse = {
 
 type FormErrors = {
   email?: string
+  employeeId?: string
   password?: string
 }
 
-const loginSchema = z.object({
+const adminSchema = z.object({
   email: z.email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+})
+
+const facultySchema = z.object({
+  employeeId: z.string().min(3, 'Employee ID is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
 export default function LoginPage() {
   const router = useRouter()
+  const [loginType, setLoginType] = useState<LoginType>('faculty')
   const [email, setEmail] = useState('')
+  const [employeeId, setEmployeeId] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -53,15 +63,28 @@ export default function LoginPage() {
     event.preventDefault()
     setErrors({})
 
-    const parsed = loginSchema.safeParse({ email, password })
+    if (loginType === 'admin') {
+      const parsed = adminSchema.safeParse({ email, password })
 
-    if (!parsed.success) {
-      const flattened = parsed.error.flatten().fieldErrors
-      setErrors({
-        email: flattened.email?.[0],
-        password: flattened.password?.[0],
-      })
-      return
+      if (!parsed.success) {
+        const flattened = parsed.error.flatten().fieldErrors
+        setErrors({
+          email: flattened.email?.[0],
+          password: flattened.password?.[0],
+        })
+        return
+      }
+    } else {
+      const parsed = facultySchema.safeParse({ employeeId, password })
+
+      if (!parsed.success) {
+        const flattened = parsed.error.flatten().fieldErrors
+        setErrors({
+          employeeId: flattened.employeeId?.[0],
+          password: flattened.password?.[0],
+        })
+        return
+      }
     }
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -71,13 +94,21 @@ export default function LoginPage() {
       return
     }
 
+    const endpoint =
+      loginType === 'admin' ? '/auth/login/admin' : '/auth/login/faculty'
+
+    const body =
+      loginType === 'admin'
+        ? { email: email.trim(), password }
+        : { employeeId: employeeId.trim().toUpperCase(), password }
+
     setLoading(true)
 
     try {
-      const response = await fetch(`${apiUrl}/auth/login`, {
+      const response = await fetch(`${apiUrl}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(body),
       })
 
       const payload = (await response.json()) as LoginResponse
@@ -87,11 +118,10 @@ export default function LoginPage() {
         return
       }
 
-      // Stored in localStorage for temporary debugging auth flow.
       setToken(payload.access_token)
 
       if (!rememberMe) {
-        // Keep checkbox in UI for future behavior extension.
+        // Placeholder for future token/session persistence strategy.
       }
 
       router.replace('/dashboard')
@@ -138,31 +168,87 @@ export default function LoginPage() {
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h1>
             <p className="text-sm text-slate-500">Sign in to your monitoring dashboard</p>
           </div>
+
+          <div className="grid grid-cols-2 rounded-lg bg-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setLoginType('faculty')
+                setErrors({})
+              }}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                loginType === 'faculty'
+                  ? 'bg-white text-slate-900 shadow'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Faculty
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLoginType('admin')
+                setErrors({})
+              }}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                loginType === 'admin'
+                  ? 'bg-white text-slate-900 shadow'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Super Admin
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4" noValidate>
-          <div className="space-y-1">
-            <label htmlFor="email" className="text-sm font-medium text-slate-700">
-              Email
-            </label>
-            <div className="relative">
-              <MailIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-                aria-invalid={Boolean(errors.email)}
-                aria-describedby={errors.email ? 'email-error' : undefined}
-              />
+          {loginType === 'admin' ? (
+            <div className="space-y-1">
+              <label htmlFor="email" className="text-sm font-medium text-slate-700">
+                Email
+              </label>
+              <div className="relative">
+                <MailIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="admin@lnu.local"
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
+                />
+              </div>
+              {errors.email && (
+                <p id="email-error" className="text-xs text-red-600">
+                  {errors.email}
+                </p>
+              )}
             </div>
-            {errors.email && (
-              <p id="email-error" className="text-xs text-red-600">
-                {errors.email}
-              </p>
-            )}
-          </div>
+          ) : (
+            <div className="space-y-1">
+              <label htmlFor="employeeId" className="text-sm font-medium text-slate-700">
+                Employee ID
+              </label>
+              <div className="relative">
+                <IdIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  id="employeeId"
+                  type="text"
+                  value={employeeId}
+                  onChange={(event) => setEmployeeId(event.target.value)}
+                  placeholder="FAC-1001"
+                  aria-invalid={Boolean(errors.employeeId)}
+                  aria-describedby={errors.employeeId ? 'employeeId-error' : undefined}
+                />
+              </div>
+              {errors.employeeId && (
+                <p id="employeeId-error" className="text-xs text-red-600">
+                  {errors.employeeId}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1">
             <label htmlFor="password" className="text-sm font-medium text-slate-700">
@@ -208,7 +294,7 @@ export default function LoginPage() {
             </label>
 
             <Link
-              href="#"
+              href="/forgot-password"
               className="font-medium text-slate-700 transition-colors hover:text-slate-900"
             >
               Forgot password?
@@ -236,6 +322,17 @@ function MailIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
       <path d="M4 6h16v12H4z" />
       <path d="m4 7 8 6 8-6" />
+    </svg>
+  )
+}
+
+function IdIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M9 9h6" />
+      <path d="M9 13h6" />
+      <path d="M9 17h4" />
     </svg>
   )
 }
@@ -268,4 +365,3 @@ function EyeOffIcon({ className }: { className?: string }) {
     </svg>
   )
 }
-

@@ -20,10 +20,9 @@ export class CreateStatusDto {
   status!: string
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @IsPositive()
-  changedById?: number
+  @IsString()
+  @IsNotEmpty()
+  changedById?: string
 
   @IsOptional()
   @IsString()

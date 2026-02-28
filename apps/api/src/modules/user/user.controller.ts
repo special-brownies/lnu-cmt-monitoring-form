@@ -1,17 +1,29 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
-  ParseIntPipe,
+  Post,
   UseGuards,
 } from '@nestjs/common'
+import { Role } from '@prisma/client'
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard'
+import { Roles } from '../../auth/roles.decorator'
+import { RolesGuard } from '../../auth/roles.guard'
+import { CreateUserDto } from './dto/create-user.dto'
 import { UserService } from './user.service'
 
 @Controller(['user', 'users'])
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.SUPER_ADMIN)
 export class UserController {
   constructor(private readonly userService: UserService) {}
+
+  @Post()
+  async create(@Body() dto: CreateUserDto) {
+    const data = await this.userService.create(dto)
+    return { success: true, data }
+  }
 
   @Get()
   async findAll() {
@@ -20,7 +32,7 @@ export class UserController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id') id: string) {
     const data = await this.userService.findOne(id)
     return { success: true, data }
   }

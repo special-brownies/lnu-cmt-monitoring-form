@@ -1,9 +1,9 @@
 import { IsString, Length } from 'class-validator'
 
-export class LoginDto {
+export class FacultyLoginDto {
   @IsString()
-  @Length(3, 120)
-  email!: string
+  @Length(3, 50)
+  employeeId!: string
 
   @IsString()
   @Length(8, 72)

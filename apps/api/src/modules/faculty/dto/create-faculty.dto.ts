@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, Length, MaxLength } from 'class-validator'
+import { IsNotEmpty, IsString, Length } from 'class-validator'
 
 export class CreateFacultyDto {
   @IsString()
@@ -6,8 +6,11 @@ export class CreateFacultyDto {
   @Length(2, 120)
   name!: string
 
-  @IsOptional()
   @IsString()
-  @MaxLength(120)
-  department?: string
+  @Length(3, 50)
+  employeeId!: string
+
+  @IsString()
+  @Length(8, 72)
+  password!: string
 }

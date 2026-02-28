@@ -110,7 +110,7 @@ export class EquipmentService {
     return equipment
   }
 
-  private async validateRelationIds(categoryId?: number, facultyId?: number) {
+  private async validateRelationIds(categoryId?: number, facultyId?: string) {
     if (categoryId !== undefined) {
       const category = await this.prisma.category.findUnique({
         where: { id: categoryId },

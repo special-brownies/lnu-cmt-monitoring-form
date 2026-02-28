@@ -24,10 +24,9 @@ export class CreateEquipmentDto {
   @IsPositive()
   categoryId!: number
 
-  @Type(() => Number)
-  @IsInt()
-  @IsPositive()
-  facultyId!: number
+  @IsString()
+  @IsNotEmpty()
+  facultyId!: string
 
   @Type(() => Date)
   @IsDate()

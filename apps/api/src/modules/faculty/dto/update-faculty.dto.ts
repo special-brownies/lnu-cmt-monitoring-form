@@ -1,4 +1,4 @@
-import { IsOptional, IsString, Length, MaxLength } from 'class-validator'
+import { IsOptional, IsString, Length } from 'class-validator'
 
 export class UpdateFacultyDto {
   @IsOptional()
@@ -8,6 +8,11 @@ export class UpdateFacultyDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(120)
-  department?: string
+  @Length(3, 50)
+  employeeId?: string
+
+  @IsOptional()
+  @IsString()
+  @Length(8, 72)
+  password?: string
 }

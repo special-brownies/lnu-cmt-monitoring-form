@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getToken, logout } from '@/lib/auth'
+import { getToken, getUserRole, logout } from '@/lib/auth'
 
 type EquipmentResponse = {
   success?: boolean
@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [equipmentData, setEquipmentData] = useState<unknown>(null)
+  const [role, setRole] = useState<string | null>(null)
 
   useEffect(() => {
     const token = getToken()
@@ -29,6 +30,8 @@ export default function DashboardPage() {
       setLoading(false)
       return
     }
+
+    setRole(getUserRole())
 
     const loadEquipment = async () => {
       try {
@@ -69,17 +72,28 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-4xl rounded-lg bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-slate-900">Debug Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-2">
+            {role === 'SUPER_ADMIN' && (
+              <button
+                onClick={() => router.push('/dashboard/password-requests')}
+                className="rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600"
+              >
+                Password Requests
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         <p className="mt-2 text-sm text-slate-600">
           API URL: {process.env.NEXT_PUBLIC_API_URL}
         </p>
+        <p className="mt-1 text-sm text-slate-600">Role: {role ?? 'Unknown'}</p>
 
         {loading && <p className="mt-6 text-slate-600">Loading equipment data...</p>}
 

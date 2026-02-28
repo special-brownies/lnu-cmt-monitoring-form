@@ -2,13 +2,14 @@
 
 import { ReactNode, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { isAuthenticated } from '@/lib/auth'
+import { AuthRole, getUserRole, isAuthenticated } from '@/lib/auth'
 
 type AuthGuardProps = {
   children: ReactNode
+  allowedRoles?: AuthRole[]
 }
 
-export default function AuthGuard({ children }: AuthGuardProps) {
+export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
   const router = useRouter()
   const [checkingAuth, setCheckingAuth] = useState(true)
 
@@ -18,8 +19,17 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       return
     }
 
+    if (allowedRoles && allowedRoles.length > 0) {
+      const role = getUserRole()
+
+      if (!role || !allowedRoles.includes(role)) {
+        router.replace('/dashboard')
+        return
+      }
+    }
+
     setCheckingAuth(false)
-  }, [router])
+  }, [allowedRoles, router])
 
   if (checkingAuth) {
     return (

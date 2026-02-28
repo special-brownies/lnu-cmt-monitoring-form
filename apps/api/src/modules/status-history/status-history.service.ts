@@ -26,7 +26,9 @@ export class StatusHistoryService {
           changedBy: {
             select: {
               id: true,
-              employeeId: true,
+              name: true,
+              email: true,
+              role: true,
               createdAt: true,
             },
           },
@@ -47,7 +49,9 @@ export class StatusHistoryService {
         changedBy: {
           select: {
             id: true,
-            employeeId: true,
+            name: true,
+            email: true,
+            role: true,
             createdAt: true,
           },
         },
@@ -55,7 +59,7 @@ export class StatusHistoryService {
     })
   }
 
-  private async ensureUserExists(userId: number) {
+  private async ensureUserExists(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },

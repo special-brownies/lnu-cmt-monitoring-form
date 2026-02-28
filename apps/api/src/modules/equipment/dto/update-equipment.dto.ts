@@ -2,6 +2,7 @@ import { Type } from 'class-transformer'
 import {
   IsDate,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsPositive,
   IsString,
@@ -26,10 +27,9 @@ export class UpdateEquipmentDto {
   categoryId?: number
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @IsPositive()
-  facultyId?: number
+  @IsString()
+  @IsNotEmpty()
+  facultyId?: string
 
   @IsOptional()
   @Type(() => Date)

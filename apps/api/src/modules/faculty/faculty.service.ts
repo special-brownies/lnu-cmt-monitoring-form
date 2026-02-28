@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
+import * as bcrypt from 'bcrypt'
 import { PrismaService } from '../../prisma/prisma.service'
 import { CreateFacultyDto } from './dto/create-faculty.dto'
 import { UpdateFacultyDto } from './dto/update-faculty.dto'
@@ -13,8 +14,16 @@ export class FacultyService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateFacultyDto) {
+    const hashedPassword = await bcrypt.hash(dto.password, 10)
+
     try {
-      return await this.prisma.faculty.create({ data: dto })
+      return await this.prisma.faculty.create({
+        data: {
+          name: dto.name,
+          employeeId: dto.employeeId.trim().toUpperCase(),
+          password: hashedPassword,
+        },
+      })
     } catch (error: unknown) {
       this.handlePrismaError(error, 'faculty')
     }
@@ -24,24 +33,38 @@ export class FacultyService {
     return this.prisma.faculty.findMany({ orderBy: { id: 'asc' } })
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     return this.ensureExists(id)
   }
 
-  async update(id: number, dto: UpdateFacultyDto) {
+  async update(id: string, dto: UpdateFacultyDto) {
     await this.ensureExists(id)
+
+    const data: Prisma.FacultyUpdateInput = {}
+
+    if (dto.name !== undefined) {
+      data.name = dto.name
+    }
+
+    if (dto.employeeId !== undefined) {
+      data.employeeId = dto.employeeId.trim().toUpperCase()
+    }
+
+    if (dto.password !== undefined) {
+      data.password = await bcrypt.hash(dto.password, 10)
+    }
 
     try {
       return await this.prisma.faculty.update({
         where: { id },
-        data: dto,
+        data,
       })
     } catch (error: unknown) {
       this.handlePrismaError(error, 'faculty')
     }
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     await this.ensureExists(id)
 
     try {
@@ -51,7 +74,7 @@ export class FacultyService {
     }
   }
 
-  private async ensureExists(id: number) {
+  private async ensureExists(id: string) {
     const faculty = await this.prisma.faculty.findUnique({ where: { id } })
 
     if (!faculty) {

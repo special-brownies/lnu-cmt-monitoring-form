@@ -7,20 +7,51 @@ datasource db {
 }
 
 model User {
-  id              Int                        @id @default(autoincrement())
-  employeeId      String                     @unique
-  passwordHash    String
-  createdAt       DateTime                   @default(now())
-  locationChanges EquipmentLocationHistory[]
-  statusChanges   EquipmentStatusHistory[]
+  id               String                     @id @default(uuid())
+  name             String
+  email            String                     @unique
+  password         String
+  role             Role                       @default(SUPER_ADMIN)
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  locationChanges  EquipmentLocationHistory[]
+  statusChanges    EquipmentStatusHistory[]
+  resolvedRequests PasswordResetRequest[]     @relation("ResolvedByAdmin")
 }
 
 model Faculty {
-  id         Int         @id @default(autoincrement())
-  name       String
-  department String?
-  createdAt  DateTime    @default(now())
-  equipments Equipment[]
+  id                    String                 @id @default(uuid())
+  name                  String
+  employeeId            String                 @unique
+  password              String
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  equipments            Equipment[]
+  passwordResetRequests PasswordResetRequest[]
+}
+
+model PasswordResetRequest {
+  id          String      @id @default(uuid())
+  facultyId   String
+  status      ResetStatus @default(PENDING)
+  requestedAt DateTime    @default(now())
+  resolvedAt  DateTime?
+  resolvedBy  String?
+
+  faculty         Faculty @relation(fields: [facultyId], references: [id])
+  resolvedByAdmin User?   @relation("ResolvedByAdmin", fields: [resolvedBy], references: [id])
+
+  @@index([facultyId, status])
+}
+
+enum Role {
+  SUPER_ADMIN
+  USER
+}
+
+enum ResetStatus {
+  PENDING
+  COMPLETED
 }
 
 model Category {
@@ -43,7 +74,7 @@ model Equipment {
   serialNumber    String                     @unique
   name            String
   categoryId      Int
-  facultyId       Int
+  facultyId       String
   datePurchased   DateTime
   createdAt       DateTime                   @default(now())
   category        Category                   @relation(fields: [categoryId], references: [id])
@@ -57,7 +88,7 @@ model EquipmentStatusHistory {
   equipmentId Int
   status      String
   changedAt   DateTime  @default(now())
-  changedById Int?
+  changedById String?
   notes       String?
   changedBy   User?     @relation(fields: [changedById], references: [id])
   equipment   Equipment @relation(fields: [equipmentId], references: [id])
@@ -68,7 +99,7 @@ model EquipmentLocationHistory {
   equipmentId  Int
   roomId       Int
   assignedAt   DateTime  @default(now())
-  assignedById Int?
+  assignedById String?
   assignedBy   User?     @relation(fields: [assignedById], references: [id])
   equipment    Equipment @relation(fields: [equipmentId], references: [id])
   room         Room      @relation(fields: [roomId], references: [id])

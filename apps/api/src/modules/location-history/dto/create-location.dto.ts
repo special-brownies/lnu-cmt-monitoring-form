@@ -1,5 +1,11 @@
 import { Type } from 'class-transformer'
-import { IsInt, IsOptional, IsPositive } from 'class-validator'
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator'
 
 export class CreateLocationDto {
   @Type(() => Number)
@@ -13,8 +19,7 @@ export class CreateLocationDto {
   roomId!: number
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @IsPositive()
-  assignedById?: number
+  @IsString()
+  @IsNotEmpty()
+  assignedById?: string
 }
