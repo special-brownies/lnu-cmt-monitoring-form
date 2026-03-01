@@ -1,4 +1,4 @@
-import { IsOptional, IsString, Length } from 'class-validator'
+import { IsIn, IsOptional, IsString, Length } from 'class-validator'
 
 export class UpdateFacultyDto {
   @IsOptional()
@@ -15,4 +15,9 @@ export class UpdateFacultyDto {
   @IsString()
   @Length(8, 72)
   password?: string
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['ACTIVE', 'INACTIVE', 'Active', 'Inactive'])
+  status?: string
 }

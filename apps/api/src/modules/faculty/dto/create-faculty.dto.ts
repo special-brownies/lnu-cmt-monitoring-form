@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, Length } from 'class-validator'
+import { IsIn, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator'
 
 export class CreateFacultyDto {
   @IsString()
@@ -13,4 +13,9 @@ export class CreateFacultyDto {
   @IsString()
   @Length(8, 72)
   password!: string
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['ACTIVE', 'INACTIVE', 'Active', 'Inactive'])
+  status?: string
 }

@@ -24,6 +24,7 @@ model Faculty {
   name                  String
   employeeId            String                 @unique
   password              String
+  status                String                 @default("Active")
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   equipments            Equipment[]

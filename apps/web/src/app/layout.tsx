@@ -7,7 +7,7 @@ const montserrat = Montserrat({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   display: 'swap',
-  variable: '--font-montserrat',
+  variable: '--font-sans',
 })
 
 export const metadata: Metadata = {
@@ -21,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`${montserrat.variable} font-sans antialiased`}>
+    <html lang="en" className={montserrat.variable}>
+      <body className="font-sans antialiased">
         <QueryProvider>{children}</QueryProvider>
       </body>
     </html>

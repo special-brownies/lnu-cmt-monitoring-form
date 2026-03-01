@@ -15,6 +15,7 @@ import { Roles } from '../../auth/roles.decorator'
 import { RolesGuard } from '../../auth/roles.guard'
 import { FacultyService } from './faculty.service'
 import { CreateFacultyDto } from './dto/create-faculty.dto'
+import { ResetPasswordDto } from './dto/reset-password.dto'
 import { UpdateFacultyDto } from './dto/update-faculty.dto'
 
 @Controller(['faculty', 'faculties'])
@@ -47,6 +48,15 @@ export class FacultyController {
     @Body() dto: UpdateFacultyDto,
   ) {
     const data = await this.service.update(id, dto)
+    return { success: true, data }
+  }
+
+  @Patch(':id/reset-password')
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() dto: ResetPasswordDto,
+  ) {
+    const data = await this.service.resetPassword(id, dto.password)
     return { success: true, data }
   }
 

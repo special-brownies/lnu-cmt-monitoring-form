@@ -4,9 +4,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
+import { Eye, EyeOff, IdCard, Lock, Mail } from 'lucide-react'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { InputWithIcon } from '@/components/ui/input-with-icon'
 import { getToken, setToken } from '@/lib/auth'
 import { getRoleLabel } from '@/lib/role-label'
 
@@ -208,18 +209,16 @@ export default function LoginPage() {
               <label htmlFor="email" className="text-sm font-medium text-slate-700">
                 Email
               </label>
-              <div className="relative">
-                <MailIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="admin@lnu.local"
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={errors.email ? 'email-error' : undefined}
-                />
-              </div>
+              <InputWithIcon
+                id="email"
+                icon={<Mail className="h-4 w-4" />}
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="admin@lnu.local"
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? 'email-error' : undefined}
+              />
               {errors.email && (
                 <p id="email-error" className="text-xs text-red-600">
                   {errors.email}
@@ -231,18 +230,16 @@ export default function LoginPage() {
               <label htmlFor="employeeId" className="text-sm font-medium text-slate-700">
                 Employee ID
               </label>
-              <div className="relative">
-                <IdIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  id="employeeId"
-                  type="text"
-                  value={employeeId}
-                  onChange={(event) => setEmployeeId(event.target.value)}
-                  placeholder="FAC-1001"
-                  aria-invalid={Boolean(errors.employeeId)}
-                  aria-describedby={errors.employeeId ? 'employeeId-error' : undefined}
-                />
-              </div>
+              <InputWithIcon
+                id="employeeId"
+                icon={<IdCard className="h-4 w-4" />}
+                type="text"
+                value={employeeId}
+                onChange={(event) => setEmployeeId(event.target.value)}
+                placeholder="FAC-1001"
+                aria-invalid={Boolean(errors.employeeId)}
+                aria-describedby={errors.employeeId ? 'employeeId-error' : undefined}
+              />
               {errors.employeeId && (
                 <p id="employeeId-error" className="text-xs text-red-600">
                   {errors.employeeId}
@@ -255,27 +252,26 @@ export default function LoginPage() {
             <label htmlFor="password" className="text-sm font-medium text-slate-700">
               Password
             </label>
-            <div className="relative">
-              <LockIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter your password"
-                aria-invalid={Boolean(errors.password)}
-                aria-describedby={errors.password ? 'password-error' : undefined}
-                className="pr-11"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-500 transition hover:text-slate-700 focus:outline-none"
-              >
-                {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-              </button>
-            </div>
+            <InputWithIcon
+              id="password"
+              icon={<Lock className="h-4 w-4" />}
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Enter your password"
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby={errors.password ? 'password-error' : undefined}
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="text-slate-500 transition hover:text-slate-700 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              }
+            />
             {errors.password && (
               <p id="password-error" className="text-xs text-red-600">
                 {errors.password}
@@ -315,54 +311,5 @@ export default function LoginPage() {
         </form>
       </section>
     </main>
-  )
-}
-
-function MailIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path d="M4 6h16v12H4z" />
-      <path d="m4 7 8 6 8-6" />
-    </svg>
-  )
-}
-
-function IdIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <rect x="4" y="4" width="16" height="16" rx="2" />
-      <path d="M9 9h6" />
-      <path d="M9 13h6" />
-      <path d="M9 17h4" />
-    </svg>
-  )
-}
-
-function LockIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <rect x="4" y="11" width="16" height="9" rx="2" />
-      <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-    </svg>
-  )
-}
-
-function EyeIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
-
-function EyeOffIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path d="M3 3l18 18" />
-      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
-      <path d="M9.2 5.2A11.1 11.1 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-4.2 5.1" />
-      <path d="M6.1 6.1C3.5 8.1 2 12 2 12s3.5 6 10 6a10.7 10.7 0 0 0 4.2-.8" />
-    </svg>
   )
 }

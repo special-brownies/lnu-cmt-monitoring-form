@@ -9,6 +9,14 @@ import { PrismaService } from '../../prisma/prisma.service'
 import { CreateFacultyDto } from './dto/create-faculty.dto'
 import { UpdateFacultyDto } from './dto/update-faculty.dto'
 
+function normalizeStatus(status?: string): string {
+  if (!status) {
+    return 'Active'
+  }
+
+  return status.trim().toUpperCase() === 'INACTIVE' ? 'Inactive' : 'Active'
+}
+
 @Injectable()
 export class FacultyService {
   constructor(private readonly prisma: PrismaService) {}
@@ -22,6 +30,7 @@ export class FacultyService {
           name: dto.name,
           employeeId: dto.employeeId.trim().toUpperCase(),
           password: hashedPassword,
+          status: normalizeStatus(dto.status),
         },
       })
     } catch (error: unknown) {
@@ -54,6 +63,10 @@ export class FacultyService {
       data.password = await bcrypt.hash(dto.password, 10)
     }
 
+    if (dto.status !== undefined) {
+      data.status = normalizeStatus(dto.status)
+    }
+
     try {
       return await this.prisma.faculty.update({
         where: { id },
@@ -62,6 +75,17 @@ export class FacultyService {
     } catch (error: unknown) {
       this.handlePrismaError(error, 'faculty')
     }
+  }
+
+  async resetPassword(id: string, password: string) {
+    await this.ensureExists(id)
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    return this.prisma.faculty.update({
+      where: { id },
+      data: { password: hashedPassword },
+    })
   }
 
   async remove(id: string) {
