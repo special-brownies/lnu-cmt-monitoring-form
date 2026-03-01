@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,6 +9,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common'
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard'
@@ -27,14 +29,40 @@ export class EquipmentController {
   }
 
   @Get()
-  async findAll() {
-    const data = await this.service.findAll()
+  async findAll(
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('categoryId') categoryId?: string,
+  ) {
+    const parsedCategoryId =
+      categoryId && categoryId.length > 0
+        ? Number.parseInt(categoryId, 10)
+        : undefined
+
+    if (categoryId && Number.isNaN(parsedCategoryId)) {
+      throw new BadRequestException('categoryId must be a valid number')
+    }
+
+    const data = await this.service.findAll({
+      search,
+      status,
+      categoryId: parsedCategoryId,
+    })
     return { success: true, data }
   }
 
   @Get('summary')
   async findSummary() {
     const data = await this.service.findSummary()
+    return { success: true, data }
+  }
+
+  @Get(':id/timeline')
+  async findTimeline(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('range') range?: string,
+  ) {
+    const data = await this.service.findTimeline(id, range)
     return { success: true, data }
   }
 

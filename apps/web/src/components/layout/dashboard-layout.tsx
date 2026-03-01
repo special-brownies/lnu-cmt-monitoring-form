@@ -11,6 +11,7 @@ import {
   ChevronRightIcon,
   LayoutDashboardIcon,
   LogOutIcon,
+  Settings2Icon,
   MenuIcon,
   UsersRoundIcon,
 } from "lucide-react"
@@ -47,6 +48,7 @@ const navItems: NavItem[] = [
   { href: "/analytics", label: "Analytics", icon: BarChart3Icon },
   { href: "/users", label: "User Management", icon: UsersRoundIcon },
   { href: "/equipment", label: "Equipment", icon: BoxesIcon },
+  { href: "/maintenance", label: "Maintenance", icon: Settings2Icon },
 ]
 
 const pageMetadata: Record<
@@ -60,6 +62,7 @@ const pageMetadata: Record<
   "/analytics": { label: "Analytics", showWelcome: false },
   "/users": { label: "User Management", showWelcome: false },
   "/equipment": { label: "Equipment", showWelcome: false },
+  "/maintenance": { label: "Maintenance", showWelcome: false },
 }
 
 export default function DashboardLayoutShell({ children }: DashboardShellProps) {

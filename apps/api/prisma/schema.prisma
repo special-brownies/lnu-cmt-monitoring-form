@@ -39,8 +39,8 @@ model PasswordResetRequest {
   resolvedAt  DateTime?
   resolvedBy  String?
 
-  faculty         Faculty @relation(fields: [facultyId], references: [id])
-  resolvedByAdmin User?   @relation("ResolvedByAdmin", fields: [resolvedBy], references: [id])
+  faculty         Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  resolvedByAdmin User?   @relation("ResolvedByAdmin", fields: [resolvedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([facultyId, status])
 }
@@ -78,8 +78,8 @@ model Equipment {
   facultyId       String
   datePurchased   DateTime
   createdAt       DateTime                   @default(now())
-  category        Category                   @relation(fields: [categoryId], references: [id])
-  faculty         Faculty                    @relation(fields: [facultyId], references: [id])
+  category        Category                   @relation(fields: [categoryId], references: [id], onUpdate: Cascade)
+  faculty         Faculty                    @relation(fields: [facultyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   locationHistory EquipmentLocationHistory[]
   statusHistory   EquipmentStatusHistory[]
 }
@@ -91,8 +91,8 @@ model EquipmentStatusHistory {
   changedAt   DateTime  @default(now())
   changedById String?
   notes       String?
-  changedBy   User?     @relation(fields: [changedById], references: [id])
-  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+  changedBy   User?     @relation(fields: [changedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
 
 model EquipmentLocationHistory {
@@ -101,7 +101,7 @@ model EquipmentLocationHistory {
   roomId       Int
   assignedAt   DateTime  @default(now())
   assignedById String?
-  assignedBy   User?     @relation(fields: [assignedById], references: [id])
-  equipment    Equipment @relation(fields: [equipmentId], references: [id])
-  room         Room      @relation(fields: [roomId], references: [id])
+  assignedBy   User?     @relation(fields: [assignedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  equipment    Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  room         Room      @relation(fields: [roomId], references: [id], onUpdate: Cascade)
 }

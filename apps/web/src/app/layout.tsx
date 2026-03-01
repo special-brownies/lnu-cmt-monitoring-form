@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={montserrat.variable}>
+    <html lang="en" className={`${montserrat.variable} ${montserrat.className}`}>
       <body className="font-sans antialiased">
         <QueryProvider>{children}</QueryProvider>
       </body>

@@ -1,6 +1,8 @@
 "use client"
 
 import { FormEvent, useState } from "react"
+import { KeyRoundIcon } from "lucide-react"
+import { ActionIcon } from "@/components/ui/action-icon"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -50,9 +52,7 @@ export function ResetPasswordDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          Reset Password
-        </Button>
+        <ActionIcon icon={KeyRoundIcon} label={`Reset password for ${faculty.name}`} />
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

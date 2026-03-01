@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { Trash2Icon } from "lucide-react"
+import { ActionIcon } from "@/components/ui/action-icon"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -35,9 +37,11 @@ export function DeleteUserDialog({ faculty, isSubmitting, onDelete }: DeleteUser
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive" size="sm">
-          Delete
-        </Button>
+        <ActionIcon
+          icon={Trash2Icon}
+          label={`Delete ${faculty.name}`}
+          className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+        />
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

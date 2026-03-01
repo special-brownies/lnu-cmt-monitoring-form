@@ -1,6 +1,8 @@
 "use client"
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
+import { PencilIcon } from "lucide-react"
+import { ActionIcon } from "@/components/ui/action-icon"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -83,9 +85,7 @@ export function EditUserDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          Edit
-        </Button>
+        <ActionIcon icon={PencilIcon} label={`Edit ${faculty.name}`} />
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

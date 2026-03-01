@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import {
   ActivityIcon,
-  KeyRoundIcon,
   PackageIcon,
-  PlusCircleIcon,
-  ShieldUserIcon,
   WrenchIcon,
 } from "lucide-react"
 import {
@@ -22,12 +19,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/dashboard/empty-state"
-import { PasswordRequestsDialog } from "@/components/dashboard/password-requests-dialog"
+import { QuickActions } from "@/components/dashboard/quick-actions"
 import { RecentActivityDialog } from "@/components/dashboard/recent-activity-dialog"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import {
   getDashboardStats,
-  getEquipmentSummary,
   getRecentActivities,
 } from "@/lib/api/dashboard"
 import { getUserRole } from "@/lib/auth"
@@ -41,7 +37,7 @@ type StatCardProps = {
 
 function StatCard({ icon: Icon, label, valueSelector }: StatCardProps) {
   const statsQuery = useQuery({
-    queryKey: ["dashboard", "stats"],
+    queryKey: ["equipmentStats"],
     queryFn: getDashboardStats,
     select: valueSelector,
   })
@@ -81,14 +77,9 @@ export default function DashboardPage() {
     queryFn: getRecentActivities,
   })
 
-  useQuery({
-    queryKey: ["equipment", "summary"],
-    queryFn: getEquipmentSummary,
-  })
-
   const { data: currentUser } = useCurrentUser()
   const role = currentUser?.role ?? getUserRole()
-  const isSuperAdmin = role === "SUPER_ADMIN"
+  const isAdmin = role === "SUPER_ADMIN"
 
   const sortedActivities = useMemo(() => {
     const records = activitiesQuery.data ?? []
@@ -194,71 +185,10 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 transition-shadow duration-200 hover:shadow-md">
-          <CardHeader>
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
-            <CardDescription>Frequently used operations</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <Button
-              variant="outline"
-              className="h-auto justify-start gap-2 py-3 transition-colors hover:bg-slate-100"
-              onClick={() =>
-                showDevelopingToast(
-                  "/equipment",
-                  "Equipment Management is still being developed",
-                )
-              }
-            >
-              <PlusCircleIcon className="size-4" />
-              Add Equipment
-            </Button>
-
-            {isSuperAdmin && (
-              <Button
-                variant="outline"
-                className="h-auto justify-start gap-2 py-3 transition-colors hover:bg-slate-100"
-                onClick={() =>
-                  showDevelopingToast(
-                    "/users",
-                    "User Management is still being developed",
-                  )
-                }
-              >
-                <ShieldUserIcon className="size-4" />
-                Create User
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              className="h-auto justify-start gap-2 py-3 transition-colors hover:bg-slate-100"
-              onClick={() =>
-                showDevelopingToast(
-                  "/equipment",
-                  "Maintenance workflow is still being developed",
-                )
-              }
-            >
-              <WrenchIcon className="size-4" />
-              Schedule Maintenance
-            </Button>
-
-            {isSuperAdmin && (
-              <PasswordRequestsDialog
-                trigger={
-                  <Button
-                    variant="outline"
-                    className="h-auto justify-start gap-2 py-3 transition-colors hover:bg-slate-100"
-                  >
-                    <KeyRoundIcon className="size-4" />
-                    Password Requests
-                  </Button>
-                }
-              />
-            )}
-          </CardContent>
-        </Card>
+        <QuickActions
+          isAdmin={isAdmin}
+          onNavigateDeveloping={showDevelopingToast}
+        />
       </section>
     </div>
   )

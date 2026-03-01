@@ -18,6 +18,7 @@ import { CreateUserDialog } from "@/components/user-management/create-user-dialo
 import { DeleteUserDialog } from "@/components/user-management/delete-user-dialog"
 import { EditUserDialog } from "@/components/user-management/edit-user-dialog"
 import { ResetPasswordDialog } from "@/components/user-management/reset-password-dialog"
+import { ApiError } from "@/lib/api/client"
 import {
   createFaculty,
   deleteFaculty,
@@ -74,8 +75,14 @@ export default function UsersPage() {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
       setToast({ type: "success", message: "User created" })
     },
-    onError: () => {
-      setToast({ type: "error", message: "Failed to create user" })
+    onError: (error) => {
+      setToast({
+        type: "error",
+        message:
+          error instanceof ApiError || error instanceof Error
+            ? error.message
+            : "Failed to create user",
+      })
     },
   })
 
@@ -85,8 +92,14 @@ export default function UsersPage() {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
       setToast({ type: "success", message: "User updated" })
     },
-    onError: () => {
-      setToast({ type: "error", message: "Failed to update user" })
+    onError: (error) => {
+      setToast({
+        type: "error",
+        message:
+          error instanceof ApiError || error instanceof Error
+            ? error.message
+            : "Failed to update user",
+      })
     },
   })
 
@@ -96,8 +109,14 @@ export default function UsersPage() {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
       setToast({ type: "success", message: "Password reset" })
     },
-    onError: () => {
-      setToast({ type: "error", message: "Failed to reset password" })
+    onError: (error) => {
+      setToast({
+        type: "error",
+        message:
+          error instanceof ApiError || error instanceof Error
+            ? error.message
+            : "Failed to reset password",
+      })
     },
   })
 
@@ -107,8 +126,14 @@ export default function UsersPage() {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
       setToast({ type: "success", message: "User deleted" })
     },
-    onError: () => {
-      setToast({ type: "error", message: "Failed to delete user" })
+    onError: (error) => {
+      setToast({
+        type: "error",
+        message:
+          error instanceof ApiError || error instanceof Error
+            ? error.message
+            : "Failed to delete user",
+      })
     },
   })
 
