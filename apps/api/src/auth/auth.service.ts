@@ -6,6 +6,9 @@ import { PrismaService } from '../prisma/prisma.service'
 import { AdminLoginDto } from './dto/admin-login.dto'
 import { FacultyLoginDto } from './dto/faculty-login.dto'
 
+const INACTIVE_ACCOUNT_MESSAGE =
+  'Your account is currently marked as Inactive, please contact the CMT Head to reactivate your account.'
+
 type AuthPrincipal = {
   id: string
   role: Role
@@ -59,6 +62,10 @@ export class AuthService {
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials')
+    }
+
+    if (faculty.status.trim().toUpperCase() === 'INACTIVE') {
+      throw new UnauthorizedException(INACTIVE_ACCOUNT_MESSAGE)
     }
 
     return this.signToken({

@@ -15,7 +15,7 @@ type LoginType = 'admin' | 'faculty'
 
 type LoginResponse = {
   access_token?: string
-  message?: string
+  message?: string | string[]
 }
 
 type FormErrors = {
@@ -23,6 +23,11 @@ type FormErrors = {
   employeeId?: string
   password?: string
 }
+
+type ToastState = {
+  message: string
+  variant: 'default' | 'destructive'
+} | null
 
 const adminSchema = z.object({
   email: z.email({ message: 'Please enter a valid email address' }),
@@ -44,7 +49,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<ToastState>(null)
 
   useEffect(() => {
     if (getToken()) {
@@ -92,7 +97,10 @@ export default function LoginPage() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
     if (!apiUrl) {
-      setToast('Missing NEXT_PUBLIC_API_URL')
+      setToast({
+        message: 'Missing NEXT_PUBLIC_API_URL',
+        variant: 'destructive',
+      })
       return
     }
 
@@ -113,10 +121,24 @@ export default function LoginPage() {
         body: JSON.stringify(body),
       })
 
-      const payload = (await response.json()) as LoginResponse
+      const payload = (await response.json().catch(() => ({}))) as LoginResponse
 
       if (!response.ok || !payload.access_token) {
-        setToast('Invalid credentials')
+        const message = Array.isArray(payload.message)
+          ? payload.message[0]
+          : payload.message
+        const normalizedMessage =
+          typeof message === 'string' && message.trim().length > 0
+            ? message
+            : 'Invalid credentials'
+        const isInactive = normalizedMessage
+          .toLowerCase()
+          .includes('inactive')
+
+        setToast({
+          message: normalizedMessage,
+          variant: isInactive ? 'destructive' : 'default',
+        })
         return
       }
 
@@ -129,7 +151,10 @@ export default function LoginPage() {
       router.replace('/dashboard')
     } catch (loginError) {
       console.error('Login request failed:', loginError)
-      setToast('Invalid credentials')
+      setToast({
+        message: 'Invalid credentials',
+        variant: 'default',
+      })
     } finally {
       setLoading(false)
     }
@@ -147,9 +172,11 @@ export default function LoginPage() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed top-4 right-4 rounded-lg bg-slate-900 px-4 py-2 text-sm text-white shadow-lg"
+          className={`fixed top-4 right-4 rounded-lg px-4 py-2 text-sm text-white shadow-lg ${
+            toast.variant === 'destructive' ? 'bg-rose-600' : 'bg-slate-900'
+          }`}
         >
-          {toast}
+          {toast.message}
         </div>
       )}
 
