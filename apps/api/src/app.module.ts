@@ -4,7 +4,9 @@ import { AppService } from './app.service'
 import { AuthModule } from './auth/auth.module'
 import { RolesGuard } from './auth/roles.guard'
 import { HealthController } from './health.controller'
+import { ActivitiesModule } from './modules/activities/activities.module'
 import { CategoryModule } from './modules/category/category.module'
+import { DashboardModule } from './modules/dashboard/dashboard.module'
 import { EquipmentModule } from './modules/equipment/equipment.module'
 import { FacultyModule } from './modules/faculty/faculty.module'
 import { LocationHistoryModule } from './modules/location-history/location-history.module'
@@ -18,7 +20,9 @@ import { PrismaModule } from './prisma/prisma.module'
   imports: [
     AuthModule,
     PrismaModule,
+    ActivitiesModule,
     CategoryModule,
+    DashboardModule,
     FacultyModule,
     RoomModule,
     EquipmentModule,

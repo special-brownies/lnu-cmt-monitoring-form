@@ -32,6 +32,12 @@ export class EquipmentController {
     return { success: true, data }
   }
 
+  @Get('summary')
+  async findSummary() {
+    const data = await this.service.findSummary()
+    return { success: true, data }
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const data = await this.service.findOne(id)

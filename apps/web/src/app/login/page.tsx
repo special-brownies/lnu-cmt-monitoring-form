@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getToken, setToken } from '@/lib/auth'
+import { getRoleLabel } from '@/lib/role-label'
 
 type LoginType = 'admin' | 'faculty'
 
@@ -196,7 +197,7 @@ export default function LoginPage() {
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Super Admin
+              {getRoleLabel('SUPER_ADMIN')}
             </button>
           </div>
         </div>

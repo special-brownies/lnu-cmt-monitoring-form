@@ -30,6 +30,51 @@ type EquipmentWithRelations = Prisma.EquipmentGetPayload<{
 export class EquipmentService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findSummary() {
+    const equipments = await this.prisma.equipment.findMany({
+      select: {
+        id: true,
+        statusHistory: {
+          orderBy: [{ changedAt: 'desc' }, { id: 'desc' }],
+          take: 1,
+          select: { status: true },
+        },
+      },
+    })
+
+    const summary = {
+      totalEquipment: equipments.length,
+      activeEquipment: 0,
+      maintenanceCount: 0,
+      defectiveCount: 0,
+      assignedCount: 0,
+      availableCount: 0,
+      uncategorizedCount: 0,
+    }
+
+    for (const equipment of equipments) {
+      const status = equipment.statusHistory[0]?.status
+        ? equipment.statusHistory[0].status.trim().toUpperCase()
+        : ''
+
+      if (status === 'ACTIVE') {
+        summary.activeEquipment += 1
+      } else if (status === 'MAINTENANCE') {
+        summary.maintenanceCount += 1
+      } else if (status === 'DEFECTIVE') {
+        summary.defectiveCount += 1
+      } else if (status === 'ASSIGNED') {
+        summary.assignedCount += 1
+      } else if (status === 'AVAILABLE') {
+        summary.availableCount += 1
+      } else {
+        summary.uncategorizedCount += 1
+      }
+    }
+
+    return summary
+  }
+
   async create(dto: CreateEquipmentDto) {
     await this.validateRelationIds(dto.categoryId, dto.facultyId)
 
