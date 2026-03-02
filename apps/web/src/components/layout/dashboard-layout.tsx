@@ -7,8 +7,6 @@ import { ReactNode, useEffect, useMemo, useState } from "react"
 import {
   BarChart3Icon,
   BoxesIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   LayoutDashboardIcon,
   LogOutIcon,
   Settings2Icon,
@@ -90,14 +88,6 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
     }
   }, [])
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setCollapsed(true)
-    }, 1800)
-
-    return () => window.clearTimeout(timer)
-  }, [])
-
   const currentPage = useMemo(() => {
     const direct = pageMetadata[pathname]
 
@@ -119,41 +109,41 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
 
   return (
     <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-      <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 [--sidebar-collapsed:3.75rem] [--sidebar-expanded:18rem]">
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 hidden border-r border-slate-200 bg-white shadow-sm transition-all duration-300 ease-in-out md:flex md:flex-col",
-            collapsed ? "w-20" : "w-72",
+            "fixed inset-y-0 left-0 z-40 hidden overflow-hidden border-r border-slate-200 bg-white shadow-sm transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:flex md:flex-col",
+            collapsed ? "w-[var(--sidebar-collapsed)]" : "w-[var(--sidebar-expanded)]",
           )}
         >
-          <div className="flex h-20 items-center px-4">
-            <div className="flex items-center gap-3 overflow-hidden">
+          <div className={cn("flex h-20 items-center", collapsed ? "justify-center px-2" : "px-4")}>
+            <button
+              type="button"
+              onClick={() => setCollapsed((value) => !value)}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="group flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm transition-colors duration-200 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+            >
               <Image
                 src="/assets/lnu-logo.png"
                 alt="LNU Logo"
                 width={40}
                 height={40}
-                className="shrink-0 rounded-md"
+                className="h-10 w-10 shrink-0 rounded-md object-contain"
                 priority
               />
-              <div className={cn("transition-opacity", collapsed ? "opacity-0" : "opacity-100")}>
+            </button>
+            <div
+              className={cn(
+                "min-w-0 overflow-hidden transition-[max-width,opacity,transform,margin] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                collapsed ? "pointer-events-none ml-0 max-w-0 -translate-x-2 opacity-0" : "ml-3 max-w-[11rem] translate-x-0 opacity-100",
+              )}
+            >
                 <p className="text-sm font-bold tracking-wide text-slate-900">LNU CMT</p>
                 <p className="text-xs text-slate-500">Monitoring System</p>
-              </div>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="ml-auto hidden text-slate-500 hover:text-slate-900 md:inline-flex"
-              onClick={() => setCollapsed((value) => !value)}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed ? <ChevronRightIcon className="size-4" /> : <ChevronLeftIcon className="size-4" />}
-            </Button>
           </div>
 
-          <nav className="flex-1 space-y-2 px-3 py-4">
+          <nav className="flex-1 space-y-2 px-2 py-4">
             {navItems.map(({ href, label, icon: Icon }) => {
               const active = pathname === href
 
@@ -162,21 +152,28 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
                   key={href}
                   href={href}
                   className={cn(
-                    "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    "group relative flex h-10 items-center rounded-lg text-sm font-medium transition-[background-color,color,padding,transform] duration-300",
                     active
                       ? "bg-slate-900 text-white shadow-sm"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-                    collapsed && "justify-center px-2",
+                    collapsed ? "justify-center px-0" : "gap-3 px-3",
                   )}
                 >
                   <Icon className={cn("size-5 shrink-0", active ? "text-white" : "text-slate-500 group-hover:text-slate-700")} />
-                  <span className={cn("truncate transition-opacity", collapsed ? "hidden" : "block")}>{label}</span>
+                  <span
+                    className={cn(
+                      "overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                      collapsed ? "max-w-0 -translate-x-1 opacity-0" : "max-w-[10rem] translate-x-0 opacity-100",
+                    )}
+                  >
+                    {label}
+                  </span>
                 </Link>
               )
             })}
           </nav>
 
-          <footer className="border-t border-slate-200 px-4 py-4 text-xs text-slate-500">
+          <footer className={cn("border-t border-slate-200 py-4 text-xs text-slate-500 transition-[padding] duration-300", collapsed ? "px-2 text-center" : "px-4")}>
             <span className={collapsed ? "sr-only" : "inline"}>©LNU CMT Office</span>
             {collapsed && <span className="flex justify-center">©</span>}
           </footer>
@@ -209,7 +206,12 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
           <div className="mt-auto border-t border-slate-200 px-4 py-4 text-xs text-slate-500">©LNU CMT Office</div>
         </SheetContent>
 
-        <div className={cn("transition-all duration-300 ease-in-out", collapsed ? "md:ml-20" : "md:ml-72")}>
+        <div
+          className={cn(
+            "transition-[margin-left] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            collapsed ? "md:ml-[var(--sidebar-collapsed)]" : "md:ml-[var(--sidebar-expanded)]",
+          )}
+        >
           <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-8">
             <div className="flex h-20 items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
