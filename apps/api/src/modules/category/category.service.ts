@@ -12,6 +12,8 @@ import { UpdateCategoryDto } from './dto/update-category.dto'
 export class CategoryService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private static readonly OTHER_CATEGORY_NAME = 'Other'
+
   async create(dto: CreateCategoryDto) {
     try {
       return await this.prisma.category.create({ data: dto })
@@ -21,6 +23,7 @@ export class CategoryService {
   }
 
   async findAll() {
+    await this.ensureOtherCategory()
     return this.prisma.category.findMany({ orderBy: { id: 'asc' } })
   }
 
@@ -59,6 +62,30 @@ export class CategoryService {
     }
 
     return category
+  }
+
+  private async ensureOtherCategory() {
+    const existingOther = await this.prisma.category.findFirst({
+      where: {
+        name: {
+          equals: CategoryService.OTHER_CATEGORY_NAME,
+          mode: 'insensitive',
+        },
+      },
+      select: { id: true },
+    })
+
+    if (existingOther) {
+      return existingOther
+    }
+
+    return this.prisma.category.create({
+      data: {
+        name: CategoryService.OTHER_CATEGORY_NAME,
+        description: 'Fallback category for custom equipment types',
+      },
+      select: { id: true },
+    })
   }
 
   private handlePrismaError(error: unknown, entity: string): never {

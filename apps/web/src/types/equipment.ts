@@ -6,6 +6,7 @@ export type EquipmentRecord = {
   serialNumber: string
   name: string
   categoryId: number
+  customCategoryName?: string | null
   facultyId: string
   datePurchased: string
   createdAt: string
@@ -51,6 +52,7 @@ export type CreateEquipmentInput = {
   name: string
   serialNumber: string
   categoryId: number
+  customCategoryName?: string
   facultyId: string
   status: EquipmentStatus
   roomId?: number
@@ -61,6 +63,7 @@ export type UpdateEquipmentInput = {
   name: string
   serialNumber: string
   categoryId: number
+  customCategoryName?: string
   facultyId: string
   status: EquipmentStatus
   roomId?: number

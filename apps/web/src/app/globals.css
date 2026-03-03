@@ -9,11 +9,6 @@ body {
   color: #0f172a;
 }
 
-html,
-body {
-  font-family: var(--font-sans), ui-sans-serif, system-ui;
-}
-
 input {
   color: #0f172a;
 }
@@ -23,6 +18,7 @@ input::placeholder {
 }
 
 @theme inline {
+  --font-sans: var(--font-montserrat), system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -65,6 +61,10 @@ input::placeholder {
 
 :root {
   --radius: 0.625rem;
+  --anim-duration-fast: 160ms;
+  --anim-duration-medium: 220ms;
+  --anim-duration-slow: 320ms;
+  --anim-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
@@ -99,6 +99,75 @@ input::placeholder {
 }
 
 .dark {
+  --anim-duration-fast: 160ms;
+  --anim-duration-medium: 220ms;
+  --anim-duration-slow: 320ms;
+}
+
+@keyframes app-fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes app-fade-scale-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes app-fade-scale-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.98);
+  }
+}
+
+@keyframes app-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes app-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes app-skeleton {
+  0% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}
+
+.dark {
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
@@ -130,6 +199,68 @@ input::placeholder {
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+}
+
+@layer utilities {
+  .anim-page-enter {
+    animation: app-fade-slide-in var(--anim-duration-medium) var(--anim-ease-standard);
+  }
+
+  .anim-tab-content {
+    animation: app-fade-slide-in var(--anim-duration-fast) var(--anim-ease-standard);
+  }
+
+  .anim-overlay-enter {
+    animation: app-overlay-in var(--anim-duration-medium) var(--anim-ease-standard);
+  }
+
+  .anim-overlay-exit {
+    animation: app-overlay-out var(--anim-duration-fast) var(--anim-ease-standard);
+  }
+
+  .anim-modal-enter {
+    animation: app-fade-scale-in var(--anim-duration-medium) var(--anim-ease-standard);
+  }
+
+  .anim-modal-exit {
+    animation: app-fade-scale-out var(--anim-duration-fast) var(--anim-ease-standard);
+  }
+
+  .anim-skeleton {
+    animation: app-skeleton 1.35s ease-in-out infinite;
+  }
+
+  .anim-card {
+    transition:
+      transform var(--anim-duration-medium) var(--anim-ease-standard),
+      box-shadow var(--anim-duration-medium) var(--anim-ease-standard),
+      background-color var(--anim-duration-medium) var(--anim-ease-standard);
+  }
+
+  .anim-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .anim-button {
+    transition:
+      transform var(--anim-duration-fast) var(--anim-ease-standard),
+      box-shadow var(--anim-duration-fast) var(--anim-ease-standard),
+      background-color var(--anim-duration-fast) var(--anim-ease-standard),
+      color var(--anim-duration-fast) var(--anim-ease-standard),
+      border-color var(--anim-duration-fast) var(--anim-ease-standard);
+  }
+
+  .anim-button:hover {
+    transform: translateY(-1px);
+  }
+
+  .anim-button:active {
+    transform: translateY(0);
+  }
+
+  .anim-caret {
+    transition: transform var(--anim-duration-fast) var(--anim-ease-standard);
+  }
 }
 
 @layer base {

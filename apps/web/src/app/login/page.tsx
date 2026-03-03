@@ -167,7 +167,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <main className="anim-page-enter flex min-h-screen items-center justify-center bg-slate-50 px-4">
       {toast && (
         <div
           role="status"

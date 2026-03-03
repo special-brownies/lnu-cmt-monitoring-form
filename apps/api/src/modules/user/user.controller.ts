@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common'
@@ -11,6 +13,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard'
 import { Roles } from '../../auth/roles.decorator'
 import { RolesGuard } from '../../auth/roles.guard'
 import { CreateUserDto } from './dto/create-user.dto'
+import { UpdateUserDto } from './dto/update-user.dto'
 import { UserService } from './user.service'
 
 @Controller(['user', 'users'])
@@ -34,6 +37,21 @@ export class UserController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const data = await this.userService.findOne(id)
+    return { success: true, data }
+  }
+
+  @Patch(':id')
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+  ) {
+    const data = await this.userService.update(id, dto)
+    return { success: true, data }
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    const data = await this.userService.remove(id)
     return { success: true, data }
   }
 }

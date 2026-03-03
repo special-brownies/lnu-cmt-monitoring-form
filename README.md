@@ -10,6 +10,10 @@ LNU CMT Monitoring System is a full-stack asset monitoring platform for the LNU 
 - Role-based access control for `SUPER_ADMIN` and `USER` actors
 - Helpdesk-style password request workflow for faculty users
 - Audit-ready architecture via structured history models and admin action traceability
+- Admin account lifecycle management with status (`Active` / `Inactive`) and edit/delete actions
+- Global list sorting controls (`A-Z`, `Newest`, `Oldest`) across key management screens
+- Structured `Other` category handling for equipment via `customCategoryName`
+- Centralized UI animation system (page transitions, tabs, modal/dropdown motion, interactive hover states)
 
 ## Tech Stack
 
@@ -34,6 +38,21 @@ The system uses a containerized, service-oriented architecture:
 ### Runtime Networking
 - Internal container DNS is used for inter-service communication (for example `postgres` and `api`).
 - Browser-facing endpoints are exposed through localhost ports.
+
+## Recent Enhancements (2026-03)
+- **Admin user table parity**
+  - Admin rows now use real status values and actionable edit/delete controls.
+  - Admin status is persisted in the `User` model and enforced in auth validation.
+- **Global sorting pattern**
+  - Shared sorting utility + shared sort control component implemented in frontend.
+  - Users, Equipment, and Password Requests support `A-Z`, `Newest`, and `Oldest`.
+- **Equipment category `Other`**
+  - Equipment now supports structured custom labels through `customCategoryName`.
+  - When category is `Other`, custom label is required.
+  - Duplicate custom labels under `Other` are prevented by backend validation and DB uniqueness.
+- **Global animation system**
+  - Centralized animation tokens and utility classes added in global styles.
+  - Applied to loading placeholders, page transitions, tabs, dialog/sheet/dropdown motion, and interactive hover behavior.
 
 ## Authentication Model
 
@@ -89,7 +108,7 @@ docker compose exec api npx prisma generate
 
 ### Sample Faculty
 - Employee ID: `FAC-1001`
-- Password: `FacultyPass123`
+- Password: `Faculty123`
 
 ## Project Structure
 ```text
@@ -146,6 +165,12 @@ Base URL: `http://localhost:3000`
 - `/status-history`
 - `/location-history`
 
+### Notable Endpoints
+- `PATCH /users/:id` (SUPER_ADMIN update)
+- `DELETE /users/:id` (SUPER_ADMIN delete)
+- `GET /equipment?search=&status=&categoryId=`
+- `POST /equipment` and `PATCH /equipment/:id` support `customCategoryName` when category is `Other`
+
 ## Development Workflow
 1. Pull latest code and rebuild containers if dependencies changed.
 2. Update Prisma schema when changing data models.
@@ -174,6 +199,7 @@ docker compose exec web npm run build
 - Role checks enforce SUPER_ADMIN-only operations (account creation, password request management).
 - Faculty password request endpoint avoids exposing account existence.
 - Password request resolution is traceable through resolver metadata.
+- Inactive accounts are rejected during authentication/authorization checks.
 
 ## Roadmap
 - Email notifications for password request lifecycle

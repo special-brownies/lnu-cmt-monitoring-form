@@ -35,4 +35,9 @@ export class UpdateEquipmentDto {
   @Type(() => Date)
   @IsDate()
   datePurchased?: Date
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  customCategoryName?: string
 }
