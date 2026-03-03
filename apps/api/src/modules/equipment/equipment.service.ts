@@ -34,7 +34,7 @@ type EquipmentQueryFilters = {
   categoryId?: number
 }
 
-type TimelineRange = '24h' | '7d' | '30d'
+type TimelineRange = 'all' | '24h' | '7d' | '30d'
 
 type EquipmentTimelineEvent = {
   id: string
@@ -44,14 +44,18 @@ type EquipmentTimelineEvent = {
 }
 
 function normalizeTimelineRange(range?: string): TimelineRange {
-  if (range === '7d' || range === '30d') {
+  if (range === '24h' || range === '7d' || range === '30d') {
     return range
   }
 
-  return '24h'
+  return 'all'
 }
 
-function getTimelineCutoff(range: TimelineRange): Date {
+function getTimelineCutoff(range: TimelineRange): Date | null {
+  if (range === 'all') {
+    return null
+  }
+
   const now = new Date()
   const cutoff = new Date(now)
 
@@ -285,12 +289,16 @@ export class EquipmentService {
 
     const [statusEvents, locationEvents] = await Promise.all([
       this.prisma.equipmentStatusHistory.findMany({
-        where: {
-          equipmentId: id,
-          changedAt: {
-            gte: cutoff,
-          },
-        },
+        where: cutoff
+          ? {
+              equipmentId: id,
+              changedAt: {
+                gte: cutoff,
+              },
+            }
+          : {
+              equipmentId: id,
+            },
         orderBy: [{ changedAt: 'desc' }, { id: 'desc' }],
         include: {
           changedBy: {
@@ -302,12 +310,16 @@ export class EquipmentService {
         },
       }),
       this.prisma.equipmentLocationHistory.findMany({
-        where: {
-          equipmentId: id,
-          assignedAt: {
-            gte: cutoff,
-          },
-        },
+        where: cutoff
+          ? {
+              equipmentId: id,
+              assignedAt: {
+                gte: cutoff,
+              },
+            }
+          : {
+              equipmentId: id,
+            },
         orderBy: [{ assignedAt: 'desc' }, { id: 'desc' }],
         include: {
           room: {
@@ -365,7 +377,7 @@ export class EquipmentService {
       })
     }
 
-    if (equipment.faculty && equipment.createdAt >= cutoff) {
+    if (equipment.faculty && (!cutoff || equipment.createdAt >= cutoff)) {
       timeline.push({
         id: `faculty-current-${equipment.id}`,
         type: 'FACULTY',

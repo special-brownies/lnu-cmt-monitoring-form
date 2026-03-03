@@ -175,7 +175,7 @@ export function deleteEquipment(id: number) {
   })
 }
 
-export function getEquipmentTimeline(id: number, range: TimelineRange = "24h") {
+export function getEquipmentTimeline(id: number, range: TimelineRange = "all") {
   const params = new URLSearchParams({ range })
 
   return apiClient<EquipmentTimelineEvent[]>(`/equipment/${id}/timeline?${params.toString()}`, {

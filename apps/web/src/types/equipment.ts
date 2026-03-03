@@ -1,5 +1,5 @@
 export type EquipmentStatus = "ASSIGNED" | "AVAILABLE" | "MAINTENANCE" | "DEFECTIVE"
-export type TimelineRange = "24h" | "7d" | "30d"
+export type TimelineRange = "all" | "24h" | "7d" | "30d"
 
 export type EquipmentRecord = {
   id: number
