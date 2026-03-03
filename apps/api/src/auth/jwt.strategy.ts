@@ -31,11 +31,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           name: true,
           email: true,
           role: true,
+          status: true,
           createdAt: true,
         },
       })
 
       if (!admin) {
+        throw new UnauthorizedException('Invalid token')
+      }
+
+      if (admin.status.trim().toUpperCase() === 'INACTIVE') {
         throw new UnauthorizedException('Invalid token')
       }
 

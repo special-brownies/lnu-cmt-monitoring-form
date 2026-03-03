@@ -8,6 +8,15 @@ import { Prisma, Role } from '@prisma/client'
 import * as bcrypt from 'bcrypt'
 import { PrismaService } from '../../prisma/prisma.service'
 import { CreateUserDto } from './dto/create-user.dto'
+import { UpdateUserDto } from './dto/update-user.dto'
+
+function normalizeStatus(status?: string): string {
+  if (!status) {
+    return 'Active'
+  }
+
+  return status.trim().toUpperCase() === 'INACTIVE' ? 'Inactive' : 'Active'
+}
 
 @Injectable()
 export class UserService {
@@ -15,12 +24,14 @@ export class UserService {
 
   async findAll() {
     return this.prisma.user.findMany({
+      where: { role: Role.SUPER_ADMIN },
       orderBy: { id: 'asc' },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        status: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -28,23 +39,7 @@ export class UserService {
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    })
-
-    if (!user) {
-      throw new NotFoundException('User not found')
-    }
-
-    return user
+    return this.ensureExists(id)
   }
 
   async create(dto: CreateUserDto) {
@@ -60,12 +55,14 @@ export class UserService {
             email: this.normalizeEmail(dto.email!),
             password: hashedPassword,
             role: Role.SUPER_ADMIN,
+            status: normalizeStatus(dto.status),
           },
           select: {
             id: true,
             name: true,
             email: true,
             role: true,
+            status: true,
             createdAt: true,
             updatedAt: true,
           },
@@ -93,11 +90,13 @@ export class UserService {
           name: dto.name,
           employeeId: this.normalizeEmployeeId(dto.employeeId!),
           password: hashedPassword,
+          status: normalizeStatus(dto.status),
         },
         select: {
           id: true,
           name: true,
           employeeId: true,
+          status: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -116,6 +115,67 @@ export class UserService {
       }
 
       throw error
+    }
+  }
+
+  async update(id: string, dto: UpdateUserDto) {
+    await this.ensureExists(id)
+
+    const data: Prisma.UserUpdateInput = {}
+
+    if (dto.name !== undefined) {
+      data.name = dto.name
+    }
+
+    if (dto.email !== undefined) {
+      data.email = this.normalizeEmail(dto.email)
+    }
+
+    if (dto.password !== undefined) {
+      data.password = await bcrypt.hash(dto.password, 10)
+    }
+
+    if (dto.status !== undefined) {
+      data.status = normalizeStatus(dto.status)
+    }
+
+    try {
+      return await this.prisma.user.update({
+        where: { id },
+        data,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      })
+    } catch (error: unknown) {
+      this.handlePrismaError(error)
+    }
+  }
+
+  async remove(id: string) {
+    await this.ensureExists(id)
+
+    try {
+      return await this.prisma.user.delete({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      })
+    } catch (error: unknown) {
+      this.handlePrismaError(error)
     }
   }
 
@@ -161,5 +221,45 @@ export class UserService {
 
   private normalizeEmployeeId(employeeId: string): string {
     return employeeId.trim().toUpperCase()
+  }
+
+  private async ensureExists(id: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: Role.SUPER_ADMIN,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    if (!user) {
+      throw new NotFoundException('User not found')
+    }
+
+    return user
+  }
+
+  private handlePrismaError(error: unknown): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        throw new ConflictException('SUPER_ADMIN account already exists')
+      }
+
+      if (error.code === 'P2003') {
+        throw new BadRequestException(
+          'Cannot delete this user because it is referenced by other records',
+        )
+      }
+    }
+
+    throw error
   }
 }

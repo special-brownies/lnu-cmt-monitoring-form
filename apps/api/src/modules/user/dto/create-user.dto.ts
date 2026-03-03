@@ -1,8 +1,10 @@
 import { Role } from '@prisma/client'
 import {
+  IsIn,
   IsEmail,
   IsEnum,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Length,
   ValidateIf,
@@ -31,4 +33,9 @@ export class CreateUserDto {
   @IsString()
   @Length(8, 72)
   password!: string
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['ACTIVE', 'INACTIVE', 'Active', 'Inactive'])
+  status?: string
 }

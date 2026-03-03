@@ -41,6 +41,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SortSelect } from "@/components/ui/sort-select"
+import { sortCollection, type SortOption } from "@/lib/sort"
 
 type StatusFilterValue = "ALL" | EquipmentStatus
 type ToastState = {
@@ -160,6 +162,7 @@ export default function EquipmentPage() {
     (searchParams.get("status") as StatusFilterValue) || "ALL",
   )
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get("category") ?? "ALL")
+  const [sort, setSort] = useState<SortOption>("NEWEST")
   const [toast, setToast] = useState<ToastState>(null)
 
   const [addOpen, setAddOpen] = useState(false)
@@ -239,6 +242,13 @@ export default function EquipmentPage() {
     return Array.from(values)
   }, [equipmentList])
 
+  const sortedEquipmentList = useMemo(() => {
+    return sortCollection(equipmentList, sort, {
+      getPrimaryText: (equipment) => equipment.name,
+      getDateValue: (equipment) => equipment.currentStatus?.changedAt ?? equipment.createdAt,
+    })
+  }, [equipmentList, sort])
+
   const hasEditChanges = useMemo(() => {
     return JSON.stringify(normalizeFormValues(editForm)) !== JSON.stringify(normalizeFormValues(initialEditForm))
   }, [editForm, initialEditForm])
@@ -252,17 +262,14 @@ export default function EquipmentPage() {
     return () => window.clearTimeout(timeout)
   }, [toast])
 
-  useEffect(() => {
-    if (!addOpen) {
-      return
-    }
-
+  const openAddDialog = () => {
     setAddForm((current) => ({
       ...current,
       categoryId: current.categoryId || (categories[0] ? String(categories[0].id) : ""),
       facultyId: current.facultyId || (activeFaculties[0]?.id ?? ""),
     }))
-  }, [addOpen, activeFaculties, categories])
+    setAddOpen(true)
+  }
 
   const createMutation = useMutation({
     mutationFn: createEquipment,
@@ -545,8 +552,15 @@ export default function EquipmentPage() {
               ))}
             </select>
 
+            <SortSelect
+              value={sort}
+              onChange={setSort}
+              ariaLabel="Sort equipment"
+              className="h-10 min-w-[110px]"
+            />
+
             {isAdmin && (
-              <Button onClick={() => setAddOpen(true)}>
+              <Button onClick={openAddDialog}>
                 <PlusIcon className="size-4" />
                 Add Equipment
               </Button>
@@ -565,7 +579,7 @@ export default function EquipmentPage() {
                 <Skeleton key={index} className="h-12 w-full" />
               ))}
             </div>
-          ) : equipmentList.length === 0 ? (
+          ) : sortedEquipmentList.length === 0 ? (
             <EmptyState
               title="No equipment found"
               description="Try adjusting filters or create a new equipment record."
@@ -585,8 +599,11 @@ export default function EquipmentPage() {
                     <th className="px-4 py-3 text-left font-semibold text-slate-700">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {equipmentList.map((equipment) => {
+                <tbody
+                  key={sort}
+                  className="divide-y divide-slate-100 bg-white transition-all duration-200 ease-out"
+                >
+                  {sortedEquipmentList.map((equipment) => {
                     const status = normalizeEquipmentStatus(equipment.currentStatus?.status)
                     const lastUpdatedValue =
                       equipment.currentStatus?.changedAt ?? equipment.createdAt
@@ -644,6 +661,11 @@ export default function EquipmentPage() {
       <Dialog
         open={addOpen}
         onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            openAddDialog()
+            return
+          }
+
           setAddOpen(nextOpen)
           if (!nextOpen) {
             setAddForm(defaultAddForm)

@@ -17,7 +17,7 @@ services:
     working_dir: /workspace/apps/api
     volumes:
       - .:/workspace
-    command: sh -c "npm install && npm run start:dev"
+    command: sh -c "npm install && until npx prisma migrate deploy; do echo 'Waiting for postgres...'; sleep 2; done && npm run start:dev"
     ports:
       - "3000:3000"
     depends_on:

@@ -13,8 +13,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { SortSelect } from "@/components/ui/sort-select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api/client"
+import { sortCollection, type SortOption } from "@/lib/sort"
 
 type PasswordRequestRecord = {
   id: string
@@ -58,6 +60,9 @@ async function resolvePasswordRequest(payload: ResolvePayload) {
 
 export function PasswordRequestsDialog({ trigger }: PasswordRequestsDialogProps) {
   const [open, setOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<"pending" | "resolved">("pending")
+  const [pendingSort, setPendingSort] = useState<SortOption>("NEWEST")
+  const [resolvedSort, setResolvedSort] = useState<SortOption>("NEWEST")
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState("")
   const [localError, setLocalError] = useState<string | null>(null)
@@ -101,6 +106,31 @@ export function PasswordRequestsDialog({ trigger }: PasswordRequestsDialogProps)
     return passwordRequests.filter((request) => request.status === "COMPLETED")
   }, [passwordRequests])
 
+  const sortedPendingRequests = useMemo(() => {
+    return sortCollection(pendingRequests, pendingSort, {
+      getPrimaryText: (request) => request.faculty.name,
+      getDateValue: (request) => request.requestedAt,
+    })
+  }, [pendingRequests, pendingSort])
+
+  const sortedResolvedRequests = useMemo(() => {
+    return sortCollection(resolvedRequests, resolvedSort, {
+      getPrimaryText: (request) => request.faculty.name,
+      getDateValue: (request) => request.requestedAt,
+    })
+  }, [resolvedRequests, resolvedSort])
+
+  const activeSort = activeTab === "pending" ? pendingSort : resolvedSort
+
+  const handleSortChange = (nextSort: SortOption) => {
+    if (activeTab === "pending") {
+      setPendingSort(nextSort)
+      return
+    }
+
+    setResolvedSort(nextSort)
+  }
+
   const handleResolve = () => {
     if (!selectedRequest) {
       return
@@ -120,6 +150,7 @@ export function PasswordRequestsDialog({ trigger }: PasswordRequestsDialogProps)
   const renderTable = (
     requests: PasswordRequestRecord[],
     showResolveAction: boolean,
+    sortKey: string,
   ) => {
     if (requests.length === 0) {
       return (
@@ -141,7 +172,10 @@ export function PasswordRequestsDialog({ trigger }: PasswordRequestsDialogProps)
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
+          <tbody
+            key={sortKey}
+            className="divide-y divide-slate-100 bg-white transition-all duration-200 ease-out"
+          >
             {requests.map((request) => (
               <tr key={request.id}>
                 <td className="px-4 py-3 text-slate-800">{request.faculty.employeeId}</td>
@@ -194,6 +228,7 @@ export function PasswordRequestsDialog({ trigger }: PasswordRequestsDialogProps)
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
         if (!nextOpen) {
+          setActiveTab("pending")
           setSelectedRequestId(null)
           setNewPassword("")
           setLocalError(null)
@@ -263,7 +298,7 @@ export function PasswordRequestsDialog({ trigger }: PasswordRequestsDialogProps)
             </div>
           </div>
         ) : (
-          <Tabs defaultValue="pending" className="w-full">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "pending" | "resolved")} className="w-full">
             <TabsList className="bg-muted mb-4 rounded-lg p-1">
               <TabsTrigger
                 value="pending"
@@ -279,12 +314,21 @@ export function PasswordRequestsDialog({ trigger }: PasswordRequestsDialogProps)
               </TabsTrigger>
             </TabsList>
 
+            <div className="mb-4 flex items-center">
+              <SortSelect
+                value={activeSort}
+                onChange={handleSortChange}
+                ariaLabel={`Sort ${activeTab} password requests`}
+                className="min-w-[110px]"
+              />
+            </div>
+
             <TabsContent value="pending">
-              {renderTable(pendingRequests, true)}
+              {renderTable(sortedPendingRequests, true, `pending-${pendingSort}`)}
             </TabsContent>
 
             <TabsContent value="resolved">
-              {renderTable(resolvedRequests, false)}
+              {renderTable(sortedResolvedRequests, false, `resolved-${resolvedSort}`)}
             </TabsContent>
           </Tabs>
         )}

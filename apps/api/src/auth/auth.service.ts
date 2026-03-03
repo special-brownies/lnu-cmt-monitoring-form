@@ -40,6 +40,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials')
     }
 
+    if (user.status.trim().toUpperCase() === 'INACTIVE') {
+      throw new UnauthorizedException(INACTIVE_ACCOUNT_MESSAGE)
+    }
+
     return this.signToken({
       id: user.id,
       role: user.role,
