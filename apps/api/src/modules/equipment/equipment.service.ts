@@ -8,6 +8,8 @@ import { PrismaService } from '../../prisma/prisma.service'
 import { CreateEquipmentDto } from './dto/create-equipment.dto'
 import { UpdateEquipmentDto } from './dto/update-equipment.dto'
 
+const OTHER_CATEGORY_NAME = 'OTHER'
+
 const equipmentInclude = {
   category: true,
   faculty: true,
@@ -117,11 +119,19 @@ export class EquipmentService {
   }
 
   async create(dto: CreateEquipmentDto) {
-    await this.validateRelationIds(dto.categoryId, dto.facultyId)
+    await this.ensureCategoryExists(dto.categoryId)
+    await this.validateFacultyId(dto.facultyId)
+    const customCategoryName = await this.resolveCustomCategoryName(
+      dto.categoryId,
+      dto.customCategoryName,
+    )
 
     try {
       const equipment = await this.prisma.equipment.create({
-        data: dto,
+        data: {
+          ...dto,
+          customCategoryName,
+        },
         include: equipmentInclude,
       })
 
@@ -146,7 +156,8 @@ export class EquipmentService {
         const matchesSearch =
           normalizedSearch.length === 0 ||
           equipment.name.toLowerCase().includes(normalizedSearch) ||
-          equipment.serialNumber.toLowerCase().includes(normalizedSearch)
+          equipment.serialNumber.toLowerCase().includes(normalizedSearch) ||
+          equipment.customCategoryName?.toLowerCase().includes(normalizedSearch)
 
         const matchesStatus =
           normalizedStatus.length === 0 ||
@@ -176,16 +187,38 @@ export class EquipmentService {
   }
 
   async update(id: number, dto: UpdateEquipmentDto) {
-    await this.ensureExists(id)
+    const existingEquipment = await this.ensureExists(id)
 
-    if (dto.categoryId !== undefined || dto.facultyId !== undefined) {
-      await this.validateRelationIds(dto.categoryId, dto.facultyId)
+    if (dto.categoryId !== undefined) {
+      await this.ensureCategoryExists(dto.categoryId)
     }
+
+    if (dto.facultyId !== undefined) {
+      await this.validateFacultyId(dto.facultyId)
+    }
+
+    const nextCategoryId = dto.categoryId ?? existingEquipment.categoryId
+    const isCategoryChanging =
+      dto.categoryId !== undefined && dto.categoryId !== existingEquipment.categoryId
+    const sourceCustomCategoryName =
+      dto.customCategoryName !== undefined
+        ? dto.customCategoryName
+        : isCategoryChanging
+          ? null
+          : existingEquipment.customCategoryName
+
+    const customCategoryName = await this.resolveCustomCategoryName(
+      nextCategoryId,
+      sourceCustomCategoryName,
+    )
 
     try {
       const equipment = await this.prisma.equipment.update({
         where: { id },
-        data: dto,
+        data: {
+          ...dto,
+          customCategoryName,
+        },
         include: equipmentInclude,
       })
 
@@ -208,7 +241,11 @@ export class EquipmentService {
   async ensureExists(id: number) {
     const equipment = await this.prisma.equipment.findUnique({
       where: { id },
-      select: { id: true },
+      select: {
+        id: true,
+        categoryId: true,
+        customCategoryName: true,
+      },
     })
 
     if (!equipment) {
@@ -343,28 +380,64 @@ export class EquipmentService {
     )
   }
 
-  private async validateRelationIds(categoryId?: number, facultyId?: string) {
-    if (categoryId !== undefined) {
-      const category = await this.prisma.category.findUnique({
-        where: { id: categoryId },
-        select: { id: true },
-      })
+  private async ensureCategoryExists(categoryId: number) {
+    const category = await this.prisma.category.findUnique({
+      where: { id: categoryId },
+      select: { id: true },
+    })
 
-      if (!category) {
-        throw new BadRequestException(`Category with ID ${categoryId} does not exist`)
-      }
+    if (!category) {
+      throw new BadRequestException(`Category with ID ${categoryId} does not exist`)
+    }
+  }
+
+  private async validateFacultyId(facultyId: string) {
+    const faculty = await this.prisma.faculty.findUnique({
+      where: { id: facultyId },
+      select: { id: true },
+    })
+
+    if (!faculty) {
+      throw new BadRequestException(`Faculty with ID ${facultyId} does not exist`)
+    }
+  }
+
+  private normalizeCustomCategoryName(value?: string | null) {
+    const normalizedValue = value?.trim()
+    return normalizedValue && normalizedValue.length > 0 ? normalizedValue : null
+  }
+
+  private async resolveCustomCategoryName(
+    categoryId: number,
+    customCategoryName?: string | null,
+  ): Promise<string | null> {
+    const category = await this.prisma.category.findUnique({
+      where: { id: categoryId },
+      select: { name: true },
+    })
+
+    if (!category) {
+      throw new BadRequestException(`Category with ID ${categoryId} does not exist`)
     }
 
-    if (facultyId !== undefined) {
-      const faculty = await this.prisma.faculty.findUnique({
-        where: { id: facultyId },
-        select: { id: true },
-      })
+    const normalizedCustomCategoryName =
+      this.normalizeCustomCategoryName(customCategoryName)
+    const isOtherCategory =
+      category.name.trim().toUpperCase() === OTHER_CATEGORY_NAME
 
-      if (!faculty) {
-        throw new BadRequestException(`Faculty with ID ${facultyId} does not exist`)
-      }
+    if (isOtherCategory && !normalizedCustomCategoryName) {
+      throw new BadRequestException(
+        'customCategoryName is required when category is Other',
+      )
     }
+
+    if (!isOtherCategory && normalizedCustomCategoryName) {
+      throw new BadRequestException(
+        'customCategoryName is only allowed when category is Other',
+      )
+    }
+
+    return isOtherCategory ? normalizedCustomCategoryName : null
   }
 
   private formatEquipment(equipment: EquipmentWithRelations) {
@@ -381,6 +454,19 @@ export class EquipmentService {
   private handlePrismaError(error: unknown, entity: string): never {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
+        const targets = Array.isArray(error.meta?.target)
+          ? error.meta.target.join(',')
+          : ''
+
+        if (
+          targets.includes('categoryId') &&
+          targets.includes('customCategoryName')
+        ) {
+          throw new BadRequestException(
+            'Custom category already exists under Other',
+          )
+        }
+
         throw new BadRequestException(
           `A ${entity} with the same unique value already exists`,
         )

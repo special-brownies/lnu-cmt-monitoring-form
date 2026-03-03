@@ -12,6 +12,7 @@ type EquipmentPayload = {
   name: string
   serialNumber: string
   categoryId: number
+  customCategoryName?: string
   facultyId: string
   datePurchased: string
 }
@@ -28,12 +29,21 @@ type CreateLocationHistoryInput = {
 }
 
 function buildEquipmentPayload(
-  input: Pick<CreateEquipmentInput, "name" | "serialNumber" | "categoryId" | "facultyId">,
+  input: Pick<
+    CreateEquipmentInput,
+    "name" | "serialNumber" | "categoryId" | "customCategoryName" | "facultyId"
+  >,
 ): EquipmentPayload {
+  const customCategoryName = input.customCategoryName?.trim()
+
   return {
     name: input.name.trim(),
     serialNumber: input.serialNumber.trim(),
     categoryId: input.categoryId,
+    customCategoryName:
+      customCategoryName && customCategoryName.length > 0
+        ? customCategoryName
+        : undefined,
     facultyId: input.facultyId,
     datePurchased: new Date().toISOString(),
   }
@@ -95,6 +105,7 @@ export async function createEquipment(input: CreateEquipmentInput) {
         name: input.name,
         serialNumber: input.serialNumber,
         categoryId: input.categoryId,
+        customCategoryName: input.customCategoryName,
         facultyId: input.facultyId,
       }),
     ),
@@ -126,6 +137,7 @@ export async function updateEquipment(input: UpdateEquipmentInput) {
         name: input.name,
         serialNumber: input.serialNumber,
         categoryId: input.categoryId,
+        customCategoryName: input.customCategoryName,
         facultyId: input.facultyId,
       }),
     ),

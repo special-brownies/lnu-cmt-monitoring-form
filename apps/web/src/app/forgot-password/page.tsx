@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <main className="anim-page-enter flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <section className="w-full max-w-md space-y-6 rounded-2xl border border-slate-100 bg-white p-8 shadow-lg">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-slate-900">Forgot password</h1>

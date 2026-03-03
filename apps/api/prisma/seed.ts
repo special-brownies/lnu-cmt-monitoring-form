@@ -41,6 +41,7 @@ const categorySeeds = [
   { name: 'Laptop', description: 'Portable faculty and office laptops' },
   { name: 'Printer', description: 'Laser and inkjet printers' },
   { name: 'Network Device', description: 'Routers, switches, and access points' },
+  { name: 'Other', description: 'Custom equipment categories' },
 ]
 
 const roomSeeds = [

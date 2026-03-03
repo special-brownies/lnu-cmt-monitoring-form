@@ -3,10 +3,11 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { ReactNode, useEffect, useMemo, useState } from "react"
+import { ReactNode, useMemo, useState } from "react"
 import {
   BarChart3Icon,
   BoxesIcon,
+  ChevronDownIcon,
   LayoutDashboardIcon,
   LogOutIcon,
   Settings2Icon,
@@ -68,25 +69,23 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [displayName, setDisplayName] = useState("System User")
-
-  useEffect(() => {
+  const [displayName] = useState(() => {
     const payload = getAuthPayload()
 
     if (payload?.name) {
-      setDisplayName(payload.name)
-      return
+      return payload.name
     }
 
     if (payload?.employeeId) {
-      setDisplayName(payload.employeeId)
-      return
+      return payload.employeeId
     }
 
     if (payload?.email) {
-      setDisplayName(payload.email)
+      return payload.email
     }
-  }, [])
+
+    return "System User"
+  })
 
   const currentPage = useMemo(() => {
     const direct = pageMetadata[pathname]
@@ -230,11 +229,12 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-auto gap-3 rounded-full px-2 py-1.5 hover:bg-slate-100">
+                  <Button variant="ghost" className="group h-auto gap-3 rounded-full px-2 py-1.5 hover:bg-slate-100">
                     <span className="flex size-9 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
                       {displayName.slice(0, 1).toUpperCase()}
                     </span>
                     <span className="hidden text-sm font-medium text-slate-700 sm:inline">{displayName}</span>
+                    <ChevronDownIcon className="anim-caret hidden size-4 text-slate-500 sm:inline group-data-[state=open]:rotate-180" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -247,7 +247,11 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
             </div>
           </header>
 
-          <main className="min-h-[calc(100vh-5rem)] p-4 md:p-8">{children}</main>
+          <main className="min-h-[calc(100vh-5rem)] p-4 md:p-8">
+            <div key={pathname} className="anim-page-enter">
+              {children}
+            </div>
+          </main>
         </div>
       </div>
     </Sheet>

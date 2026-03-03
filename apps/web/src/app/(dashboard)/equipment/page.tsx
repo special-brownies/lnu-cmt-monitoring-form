@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ClockIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
-import { getCategories, createCategory } from "@/lib/api/categories"
+import { getCategories } from "@/lib/api/categories"
 import {
   createEquipment,
   deleteEquipment,
@@ -17,7 +17,6 @@ import { getFacultyList } from "@/lib/api/faculty"
 import { getRooms } from "@/lib/api/rooms"
 import { getFacultyStatus } from "@/types/faculty"
 import type {
-  CategoryRecord,
   CreateEquipmentInput,
   EquipmentRecord,
   EquipmentStatus,
@@ -54,6 +53,7 @@ type EquipmentFormState = {
   name: string
   serialNumber: string
   categoryId: string
+  customCategoryName: string
   facultyId: string
   status: EquipmentStatus
   roomId: string
@@ -66,12 +66,11 @@ const REQUIRED_STATUSES: EquipmentStatus[] = [
   "DEFECTIVE",
 ]
 
-const BASE_CATEGORY_NAMES = ["Laptop", "Desktop", "Network Switch", "Printer", "Projector", "Other"]
-
 const defaultAddForm: EquipmentFormState = {
   name: "",
   serialNumber: "",
   categoryId: "",
+  customCategoryName: "",
   facultyId: "",
   status: "AVAILABLE",
   roomId: "",
@@ -132,6 +131,7 @@ function normalizeFormValues(form: EquipmentFormState) {
     name: form.name.trim(),
     serialNumber: form.serialNumber.trim(),
     categoryId: form.categoryId,
+    customCategoryName: form.customCategoryName.trim(),
     facultyId: form.facultyId,
     status: form.status,
     roomId: form.roomId,
@@ -143,6 +143,7 @@ function mapEquipmentToForm(equipment: EquipmentRecord): EquipmentFormState {
     name: equipment.name,
     serialNumber: equipment.serialNumber,
     categoryId: String(equipment.categoryId),
+    customCategoryName: equipment.customCategoryName ?? "",
     facultyId: equipment.facultyId,
     status: normalizeEquipmentStatus(equipment.currentStatus?.status),
     roomId: equipment.currentRoom ? String(equipment.currentRoom.id) : "",
@@ -178,10 +179,6 @@ export default function EquipmentPage() {
   const [timelineEquipment, setTimelineEquipment] = useState<EquipmentRecord | null>(null)
   const [timelineRange, setTimelineRange] = useState<TimelineRange>("24h")
   const [deleteTarget, setDeleteTarget] = useState<EquipmentRecord | null>(null)
-
-  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
-  const [newCategoryName, setNewCategoryName] = useState("")
-  const [newCategoryError, setNewCategoryError] = useState<string | null>(null)
 
   const categoryQuery = useQuery({
     queryKey: ["categories"],
@@ -229,11 +226,6 @@ export default function EquipmentPage() {
     [categories],
   )
 
-  const subcategories = useMemo(() => {
-    const baseNameSet = new Set(BASE_CATEGORY_NAMES.map((name) => name.toLowerCase()))
-    return categories.filter((category) => !baseNameSet.has(category.name.toLowerCase()))
-  }, [categories])
-
   const statusOptions = useMemo(() => {
     const values = new Set<EquipmentStatus>(REQUIRED_STATUSES)
     for (const equipment of equipmentList) {
@@ -252,6 +244,12 @@ export default function EquipmentPage() {
   const hasEditChanges = useMemo(() => {
     return JSON.stringify(normalizeFormValues(editForm)) !== JSON.stringify(normalizeFormValues(initialEditForm))
   }, [editForm, initialEditForm])
+
+  const otherCategoryId = otherCategory ? String(otherCategory.id) : null
+  const isAddOtherSelected =
+    otherCategoryId !== null && addForm.categoryId === otherCategoryId
+  const isEditOtherSelected =
+    otherCategoryId !== null && editForm.categoryId === otherCategoryId
 
   useEffect(() => {
     if (!toast) {
@@ -318,27 +316,6 @@ export default function EquipmentPage() {
     },
   })
 
-  const createCategoryMutation = useMutation({
-    mutationFn: createCategory,
-    onSuccess: async (newCategory: CategoryRecord) => {
-      await queryClient.invalidateQueries({ queryKey: ["categories"] })
-      setNewCategoryName("")
-      setNewCategoryError(null)
-      setToast({ type: "success", message: "Category created" })
-
-      if (addOpen) {
-        setAddForm((current) => ({ ...current, categoryId: String(newCategory.id) }))
-      }
-
-      if (editOpen) {
-        setEditForm((current) => ({ ...current, categoryId: String(newCategory.id) }))
-      }
-    },
-    onError: (error) => {
-      setNewCategoryError(error instanceof Error ? error.message : "Unable to create category")
-    },
-  })
-
   const updateQueryParams = (
     nextSearch: string,
     nextStatus: StatusFilterValue,
@@ -377,10 +354,6 @@ export default function EquipmentPage() {
   const handleCategoryFilterChange = (value: string) => {
     setCategoryFilter(value)
     updateQueryParams(search, statusFilter, value)
-
-    if (otherCategory && value === String(otherCategory.id)) {
-      setCategoryManagerOpen(true)
-    }
   }
 
   const handleCreateEquipment = async (event: FormEvent<HTMLFormElement>) => {
@@ -389,6 +362,7 @@ export default function EquipmentPage() {
 
     const categoryId = Number.parseInt(addForm.categoryId, 10)
     const roomId = addForm.roomId.length > 0 ? Number.parseInt(addForm.roomId, 10) : undefined
+    const customCategoryName = addForm.customCategoryName.trim()
 
     if (!Number.isInteger(categoryId) || categoryId <= 0) {
       setAddError("Please select a valid category.")
@@ -400,10 +374,16 @@ export default function EquipmentPage() {
       return
     }
 
+    if (isAddOtherSelected && customCategoryName.length < 2) {
+      setAddError("Please specify a custom category name for Other.")
+      return
+    }
+
     const payload: CreateEquipmentInput = {
       name: addForm.name.trim(),
       serialNumber: addForm.serialNumber.trim(),
       categoryId,
+      customCategoryName: isAddOtherSelected ? customCategoryName : undefined,
       facultyId: addForm.facultyId,
       status: addForm.status,
       roomId,
@@ -435,6 +415,7 @@ export default function EquipmentPage() {
 
     const categoryId = Number.parseInt(editForm.categoryId, 10)
     const roomId = editForm.roomId.length > 0 ? Number.parseInt(editForm.roomId, 10) : undefined
+    const customCategoryName = editForm.customCategoryName.trim()
 
     if (!Number.isInteger(categoryId) || categoryId <= 0) {
       setEditError("Please select a valid category.")
@@ -446,12 +427,18 @@ export default function EquipmentPage() {
       return
     }
 
+    if (isEditOtherSelected && customCategoryName.length < 2) {
+      setEditError("Please specify a custom category name for Other.")
+      return
+    }
+
     const facultyName = activeFaculties.find((faculty) => faculty.id === editForm.facultyId)?.name
     const payload: UpdateEquipmentInput = {
       id: selectedEquipment.id,
       name: editForm.name.trim(),
       serialNumber: editForm.serialNumber.trim(),
       categoryId,
+      customCategoryName: isEditOtherSelected ? customCategoryName : undefined,
       facultyId: editForm.facultyId,
       status: editForm.status,
       roomId,
@@ -463,32 +450,6 @@ export default function EquipmentPage() {
 
     try {
       await updateMutation.mutateAsync(payload)
-    } catch {
-      // Handled in mutation callbacks.
-    }
-  }
-
-  const handleCreateCategory = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setNewCategoryError(null)
-
-    const trimmedName = newCategoryName.trim()
-    if (trimmedName.length < 2) {
-      setNewCategoryError("Category name must be at least 2 characters.")
-      return
-    }
-
-    const duplicate = categories.some(
-      (category) => category.name.trim().toLowerCase() === trimmedName.toLowerCase(),
-    )
-
-    if (duplicate) {
-      setNewCategoryError("Category already exists.")
-      return
-    }
-
-    try {
-      await createCategoryMutation.mutateAsync({ name: trimmedName })
     } catch {
       // Handled in mutation callbacks.
     }
@@ -607,12 +568,17 @@ export default function EquipmentPage() {
                     const status = normalizeEquipmentStatus(equipment.currentStatus?.status)
                     const lastUpdatedValue =
                       equipment.currentStatus?.changedAt ?? equipment.createdAt
+                    const categoryLabel =
+                      equipment.category?.name?.trim().toLowerCase() === "other" &&
+                      equipment.customCategoryName
+                        ? `Other (${equipment.customCategoryName})`
+                        : equipment.category?.name ?? "-"
 
                     return (
                       <tr key={equipment.id}>
                         <td className="px-4 py-3 text-slate-800">{equipment.name}</td>
                         <td className="px-4 py-3 text-slate-700">{equipment.serialNumber}</td>
-                        <td className="px-4 py-3 text-slate-700">{equipment.category?.name ?? "-"}</td>
+                        <td className="px-4 py-3 text-slate-700">{categoryLabel}</td>
                         <td className="px-4 py-3 text-slate-700">{equipment.faculty?.name ?? "-"}</td>
                         <td className="px-4 py-3 text-slate-700">{equipment.currentRoom?.name ?? "-"}</td>
                         <td className="px-4 py-3">
@@ -700,13 +666,9 @@ export default function EquipmentPage() {
                 <select
                   id="add-category"
                   value={addForm.categoryId}
-                  onChange={(event) => {
-                    const value = event.target.value
-                    setAddForm((current) => ({ ...current, categoryId: value }))
-                    if (otherCategory && value === String(otherCategory.id)) {
-                      setCategoryManagerOpen(true)
-                    }
-                  }}
+                  onChange={(event) =>
+                    setAddForm((current) => ({ ...current, categoryId: event.target.value }))
+                  }
                   className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
                   required
                 >
@@ -719,6 +681,30 @@ export default function EquipmentPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div
+                className={`space-y-1 overflow-hidden transition-all duration-200 ${
+                  isAddOtherSelected
+                    ? "max-h-24 opacity-100"
+                    : "pointer-events-none max-h-0 opacity-0"
+                }`}
+              >
+                <label className="text-sm font-medium text-slate-700" htmlFor="add-custom-category">
+                  Specify Category
+                </label>
+                <Input
+                  id="add-custom-category"
+                  value={addForm.customCategoryName}
+                  onChange={(event) =>
+                    setAddForm((current) => ({
+                      ...current,
+                      customCategoryName: event.target.value,
+                    }))
+                  }
+                  placeholder="e.g. Scanner"
+                  required={isAddOtherSelected}
+                />
               </div>
 
               <div className="space-y-1">
@@ -858,13 +844,9 @@ export default function EquipmentPage() {
                 <select
                   id="edit-category"
                   value={editForm.categoryId}
-                  onChange={(event) => {
-                    const value = event.target.value
-                    setEditForm((current) => ({ ...current, categoryId: value }))
-                    if (otherCategory && value === String(otherCategory.id)) {
-                      setCategoryManagerOpen(true)
-                    }
-                  }}
+                  onChange={(event) =>
+                    setEditForm((current) => ({ ...current, categoryId: event.target.value }))
+                  }
                   className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
                   required
                 >
@@ -877,6 +859,30 @@ export default function EquipmentPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div
+                className={`space-y-1 overflow-hidden transition-all duration-200 ${
+                  isEditOtherSelected
+                    ? "max-h-24 opacity-100"
+                    : "pointer-events-none max-h-0 opacity-0"
+                }`}
+              >
+                <label className="text-sm font-medium text-slate-700" htmlFor="edit-custom-category">
+                  Specify Category
+                </label>
+                <Input
+                  id="edit-custom-category"
+                  value={editForm.customCategoryName}
+                  onChange={(event) =>
+                    setEditForm((current) => ({
+                      ...current,
+                      customCategoryName: event.target.value,
+                    }))
+                  }
+                  placeholder="e.g. Scanner"
+                  required={isEditOtherSelected}
+                />
               </div>
 
               <div className="space-y-1">
@@ -1114,77 +1120,6 @@ export default function EquipmentPage() {
               {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={categoryManagerOpen}
-        onOpenChange={(nextOpen) => {
-          setCategoryManagerOpen(nextOpen)
-          if (!nextOpen) {
-            setNewCategoryName("")
-            setNewCategoryError(null)
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Category Manager</DialogTitle>
-            <DialogDescription>
-              Manage custom subcategories under Other and prevent duplicates.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form className="space-y-3" onSubmit={handleCreateCategory}>
-            <div className="space-y-1">
-              <label htmlFor="new-category-name" className="text-sm font-medium text-slate-700">
-                New Subcategory Name
-              </label>
-              <Input
-                id="new-category-name"
-                value={newCategoryName}
-                onChange={(event) => setNewCategoryName(event.target.value)}
-                placeholder="e.g. UPS"
-                required
-              />
-            </div>
-
-            {newCategoryError && (
-              <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                {newCategoryError}
-              </p>
-            )}
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCategoryManagerOpen(false)}>
-                Close
-              </Button>
-              <Button type="submit" disabled={createCategoryMutation.isPending}>
-                {createCategoryMutation.isPending ? "Saving..." : "Add Subcategory"}
-              </Button>
-            </DialogFooter>
-          </form>
-
-          <div className="max-h-[40vh] overflow-auto rounded-lg border border-slate-200">
-            {subcategories.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">No subcategories yet.</div>
-            ) : (
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-700">Name</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {subcategories.map((category) => (
-                    <tr key={category.id}>
-                      <td className="px-4 py-2 text-slate-700">{category.name}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
         </DialogContent>
       </Dialog>
     </div>

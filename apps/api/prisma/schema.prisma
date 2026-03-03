@@ -76,6 +76,7 @@ model Equipment {
   serialNumber    String                     @unique
   name            String
   categoryId      Int
+  customCategoryName String?
   facultyId       String
   datePurchased   DateTime
   createdAt       DateTime                   @default(now())
@@ -83,6 +84,8 @@ model Equipment {
   faculty         Faculty                    @relation(fields: [facultyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   locationHistory EquipmentLocationHistory[]
   statusHistory   EquipmentStatusHistory[]
+
+  @@unique([categoryId, customCategoryName])
 }
 
 model EquipmentStatusHistory {

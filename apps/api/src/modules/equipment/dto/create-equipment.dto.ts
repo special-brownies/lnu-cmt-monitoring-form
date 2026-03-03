@@ -3,6 +3,7 @@ import {
   IsDate,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsPositive,
   IsString,
   Length,
@@ -31,4 +32,9 @@ export class CreateEquipmentDto {
   @Type(() => Date)
   @IsDate()
   datePurchased!: Date
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  customCategoryName?: string
 }
