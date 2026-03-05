@@ -177,7 +177,7 @@ export default function EquipmentPage() {
   const [editError, setEditError] = useState<string | null>(null)
 
   const [timelineEquipment, setTimelineEquipment] = useState<EquipmentRecord | null>(null)
-  const [timelineRange, setTimelineRange] = useState<TimelineRange>("24h")
+  const [timelineRange, setTimelineRange] = useState<TimelineRange>("all")
   const [deleteTarget, setDeleteTarget] = useState<EquipmentRecord | null>(null)
 
   const categoryQuery = useQuery({
@@ -600,7 +600,7 @@ export default function EquipmentPage() {
                               icon={ClockIcon}
                               label="View timeline"
                               onClick={() => {
-                                setTimelineRange("24h")
+                                setTimelineRange("all")
                                 setTimelineEquipment(equipment)
                               }}
                             />
@@ -997,74 +997,84 @@ export default function EquipmentPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <DialogTitle>
-                  {timelineEquipment ? `${timelineEquipment.name} Timeline` : "Equipment Timeline"}
-                </DialogTitle>
-                <DialogDescription>Latest equipment history events.</DialogDescription>
-              </div>
-              <div className="flex items-center gap-2 self-start">
-                <span className="text-xs text-slate-500">Filter:</span>
-                <div className="inline-flex items-center rounded-md border border-slate-200 p-1">
-                  <Button
-                    type="button"
-                    variant={timelineRange === "24h" ? "secondary" : "ghost"}
-                    size="sm"
-                    className="h-8"
-                    onClick={() => setTimelineRange("24h")}
-                  >
-                    Last 24 hours
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={timelineRange === "7d" ? "secondary" : "ghost"}
-                    size="sm"
-                    className="h-8"
-                    onClick={() => setTimelineRange("7d")}
-                  >
-                    Last 7 days
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={timelineRange === "30d" ? "secondary" : "ghost"}
-                    size="sm"
-                    className="h-8"
-                    onClick={() => setTimelineRange("30d")}
-                  >
-                    Last 30 days
-                  </Button>
-                </div>
-              </div>
-            </div>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader className="space-y-2">
+            <DialogTitle>
+              {timelineEquipment ? `${timelineEquipment.name} Timeline` : "Equipment Timeline"}
+            </DialogTitle>
+            <DialogDescription>Latest equipment history events.</DialogDescription>
           </DialogHeader>
 
-          {timelineQuery.isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <Skeleton key={index} className="h-14 w-full" />
-              ))}
-            </div>
-          ) : timelineQuery.isError ? (
-            <div className="space-y-4">
-              <EmptyState
-                title="Unable to load timeline"
-                description="There was an issue fetching timeline events."
-              />
-              <div className="flex justify-center">
-                <Button variant="outline" onClick={() => void timelineQuery.refetch()}>
-                  Retry
+          <div className="flex justify-end">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className="text-xs text-slate-500">Filter:</span>
+              <div className="inline-flex flex-wrap items-center justify-end rounded-md border border-slate-200 p-1">
+                <Button
+                  type="button"
+                  variant={timelineRange === "all" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-8 whitespace-nowrap"
+                  onClick={() => setTimelineRange("all")}
+                >
+                  All Time
+                </Button>
+                <Button
+                  type="button"
+                  variant={timelineRange === "24h" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-8 whitespace-nowrap"
+                  onClick={() => setTimelineRange("24h")}
+                >
+                  Last 24 hours
+                </Button>
+                <Button
+                  type="button"
+                  variant={timelineRange === "7d" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-8 whitespace-nowrap"
+                  onClick={() => setTimelineRange("7d")}
+                >
+                  Last 7 days
+                </Button>
+                <Button
+                  type="button"
+                  variant={timelineRange === "30d" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-8 whitespace-nowrap"
+                  onClick={() => setTimelineRange("30d")}
+                >
+                  Last 30 days
                 </Button>
               </div>
             </div>
-          ) : (timelineQuery.data ?? []).length === 0 ? (
-            <div className="py-10 text-center text-muted-foreground">
-              No timeline events for this time range.
-            </div>
-          ) : (
-            <div className="max-h-[60vh] overflow-auto rounded-lg border border-slate-200 px-4 py-2">
+          </div>
+
+          <div className="max-h-[60vh] min-h-[20rem] overflow-y-auto rounded-lg border border-slate-200 px-4 py-3">
+            {timelineQuery.isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Skeleton key={index} className="h-14 w-full" />
+                ))}
+              </div>
+            ) : timelineQuery.isError ? (
+              <div className="space-y-4 pt-8">
+                <EmptyState
+                  title="Unable to load timeline"
+                  description="There was an issue fetching timeline events."
+                />
+                <div className="flex justify-center">
+                  <Button variant="outline" onClick={() => void timelineQuery.refetch()}>
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            ) : (timelineQuery.data ?? []).length === 0 ? (
+              <div className="py-10 text-center text-muted-foreground">
+                {timelineRange === "all"
+                  ? "No timeline events available for this equipment."
+                  : "No timeline events for this time range."}
+              </div>
+            ) : (
               <div className="space-y-4 py-2">
                 {(timelineQuery.data ?? []).map((event: EquipmentTimelineEvent) => (
                   <div key={event.id} className="relative pl-6">
@@ -1076,8 +1086,8 @@ export default function EquipmentPage() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
