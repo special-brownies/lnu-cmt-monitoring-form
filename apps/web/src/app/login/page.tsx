@@ -8,7 +8,7 @@ import { Eye, EyeOff, IdCard, Lock, Mail } from 'lucide-react'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { InputWithIcon } from '@/components/ui/input-with-icon'
-import { getToken, setToken } from '@/lib/auth'
+import { getToken, isAuthenticated, logout, setToken } from '@/lib/auth'
 import { getRoleLabel } from '@/lib/role-label'
 
 type LoginType = 'admin' | 'faculty'
@@ -52,8 +52,13 @@ export default function LoginPage() {
   const [toast, setToast] = useState<ToastState>(null)
 
   useEffect(() => {
-    if (getToken()) {
+    if (isAuthenticated()) {
       router.replace('/dashboard')
+      return
+    }
+
+    if (getToken()) {
+      logout()
     }
   }, [router])
 

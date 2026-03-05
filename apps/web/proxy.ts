@@ -15,7 +15,7 @@ type JwtPayload = {
   exp?: number
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get(AUTH_COOKIE_KEY)?.value
   const tokenPayload = token ? decodePayload(token) : null
