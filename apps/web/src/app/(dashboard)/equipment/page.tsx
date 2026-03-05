@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ClockIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { EquipmentTimelineDialog } from "@/components/equipment/equipment-timeline-dialog"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { notifyError, notifySuccess } from "@/lib/activity-toast"
 import { getCategories } from "@/lib/api/categories"
@@ -11,7 +12,6 @@ import {
   createEquipment,
   deleteEquipment,
   getEquipmentList,
-  getEquipmentTimeline,
   updateEquipment,
 } from "@/lib/api/equipment"
 import { getFacultyList } from "@/lib/api/faculty"
@@ -21,8 +21,6 @@ import type {
   CreateEquipmentInput,
   EquipmentRecord,
   EquipmentStatus,
-  EquipmentTimelineEvent,
-  TimelineRange,
   UpdateEquipmentInput,
 } from "@/types/equipment"
 import type { RoomRecord } from "@/types/room"
@@ -173,7 +171,6 @@ export default function EquipmentPage() {
   const [editError, setEditError] = useState<string | null>(null)
 
   const [timelineEquipment, setTimelineEquipment] = useState<EquipmentRecord | null>(null)
-  const [timelineRange, setTimelineRange] = useState<TimelineRange>("all")
   const [deleteTarget, setDeleteTarget] = useState<EquipmentRecord | null>(null)
 
   const categoryQuery = useQuery({
@@ -200,12 +197,6 @@ export default function EquipmentPage() {
         status: statusFilter === "ALL" ? undefined : statusFilter,
         categoryId: categoryFilter === "ALL" ? undefined : Number.parseInt(categoryFilter, 10),
       }),
-  })
-
-  const timelineQuery = useQuery({
-    queryKey: ["equipment", "timeline", timelineEquipment?.id, timelineRange],
-    queryFn: () => getEquipmentTimeline(timelineEquipment!.id, timelineRange),
-    enabled: timelineEquipment !== null,
   })
 
   const categories = categoryQuery.data ?? []
@@ -576,7 +567,6 @@ export default function EquipmentPage() {
                               icon={ClockIcon}
                               label="View timeline"
                               onClick={() => {
-                                setTimelineRange("all")
                                 setTimelineEquipment(equipment)
                               }}
                             />
@@ -965,107 +955,16 @@ export default function EquipmentPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      <EquipmentTimelineDialog
         open={timelineEquipment !== null}
+        equipmentId={timelineEquipment?.id}
+        equipmentName={timelineEquipment?.name}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
             setTimelineEquipment(null)
           }
         }}
-      >
-        <DialogContent className="sm:max-w-4xl">
-          <DialogHeader className="space-y-2">
-            <DialogTitle>
-              {timelineEquipment ? `${timelineEquipment.name} Timeline` : "Equipment Timeline"}
-            </DialogTitle>
-            <DialogDescription>Latest equipment history events.</DialogDescription>
-          </DialogHeader>
-
-          <div className="flex justify-end">
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <span className="text-xs text-slate-500">Filter:</span>
-              <div className="inline-flex flex-wrap items-center justify-end rounded-md border border-slate-200 p-1">
-                <Button
-                  type="button"
-                  variant={timelineRange === "all" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-8 whitespace-nowrap"
-                  onClick={() => setTimelineRange("all")}
-                >
-                  All Time
-                </Button>
-                <Button
-                  type="button"
-                  variant={timelineRange === "24h" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-8 whitespace-nowrap"
-                  onClick={() => setTimelineRange("24h")}
-                >
-                  Last 24 hours
-                </Button>
-                <Button
-                  type="button"
-                  variant={timelineRange === "7d" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-8 whitespace-nowrap"
-                  onClick={() => setTimelineRange("7d")}
-                >
-                  Last 7 days
-                </Button>
-                <Button
-                  type="button"
-                  variant={timelineRange === "30d" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-8 whitespace-nowrap"
-                  onClick={() => setTimelineRange("30d")}
-                >
-                  Last 30 days
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="max-h-[60vh] min-h-[20rem] overflow-y-auto rounded-lg border border-slate-200 px-4 py-3">
-            {timelineQuery.isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <Skeleton key={index} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : timelineQuery.isError ? (
-              <div className="space-y-4 pt-8">
-                <EmptyState
-                  title="Unable to load timeline"
-                  description="There was an issue fetching timeline events."
-                />
-                <div className="flex justify-center">
-                  <Button variant="outline" onClick={() => void timelineQuery.refetch()}>
-                    Retry
-                  </Button>
-                </div>
-              </div>
-            ) : (timelineQuery.data ?? []).length === 0 ? (
-              <div className="py-10 text-center text-muted-foreground">
-                {timelineRange === "all"
-                  ? "No timeline events available for this equipment."
-                  : "No timeline events for this time range."}
-              </div>
-            ) : (
-              <div className="space-y-4 py-2">
-                {(timelineQuery.data ?? []).map((event: EquipmentTimelineEvent) => (
-                  <div key={event.id} className="relative pl-6">
-                    <span className="absolute top-2 left-0 h-2 w-2 rounded-full bg-slate-400" />
-                    <p className="text-sm font-medium text-slate-800">{event.description}</p>
-                    <p className="text-xs text-slate-500">
-                      {new Date(event.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      />
 
       <Dialog
         open={deleteTarget !== null}

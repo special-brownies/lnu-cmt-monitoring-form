@@ -46,7 +46,12 @@ export class ActivitiesService {
 
     const statusActivities = statusEvents.map((event) => ({
       id: `status-${event.id}`,
-      description: `Status updated to ${event.status} for ${event.equipment.name} (${event.equipment.serialNumber})`,
+      description: this.describeStatusEvent(
+        event.status,
+        event.notes,
+        event.equipment.name,
+        event.equipment.serialNumber,
+      ),
       createdAt: event.changedAt.toISOString(),
     }))
 
@@ -62,5 +67,28 @@ export class ActivitiesService {
           new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime(),
       )
       .slice(0, limit)
+  }
+
+  private describeStatusEvent(
+    status: string,
+    notes: string | null,
+    equipmentName: string,
+    serialNumber: string,
+  ): string {
+    const normalizedStatus = status.trim().toUpperCase()
+    const normalizedNotes = notes?.trim().toLowerCase() ?? ''
+
+    if (normalizedStatus === 'MAINTENANCE') {
+      return `Maintenance started for ${equipmentName} (${serialNumber})`
+    }
+
+    if (
+      normalizedStatus === 'AVAILABLE' &&
+      normalizedNotes.includes('maintenance completed')
+    ) {
+      return `Maintenance completed for ${equipmentName} (${serialNumber})`
+    }
+
+    return `Status updated to ${status} for ${equipmentName} (${serialNumber})`
   }
 }

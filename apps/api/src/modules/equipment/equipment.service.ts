@@ -349,6 +349,15 @@ export class EquipmentService {
         createdAt: event.changedAt.toISOString(),
       })
 
+      if (normalizedStatus === 'MAINTENANCE') {
+        timeline.push({
+          id: `maintenance-start-${event.id}`,
+          type: 'MAINTENANCE',
+          description: 'Maintenance started',
+          createdAt: event.changedAt.toISOString(),
+        })
+      }
+
       if (olderStatus === 'MAINTENANCE' && normalizedStatus !== 'MAINTENANCE') {
         timeline.push({
           id: `maintenance-${event.id}`,

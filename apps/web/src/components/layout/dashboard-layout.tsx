@@ -40,14 +40,15 @@ type NavItem = {
   href: string
   label: string
   icon: React.ComponentType<{ className?: string }>
+  adminOnly?: boolean
 }
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
   { href: "/analytics", label: "Analytics", icon: BarChart3Icon },
-  { href: "/users", label: "User Management", icon: UsersRoundIcon },
+  { href: "/users", label: "User Management", icon: UsersRoundIcon, adminOnly: true },
   { href: "/equipment", label: "Equipment", icon: BoxesIcon },
-  { href: "/maintenance", label: "Maintenance", icon: Settings2Icon },
+  { href: "/maintenance", label: "Maintenance", icon: Settings2Icon, adminOnly: true },
 ]
 
 const pageMetadata: Record<
@@ -123,6 +124,20 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
 
     return "System User"
   }, [hydrated])
+  const currentRole = useMemo(() => {
+    if (!hydrated) {
+      return null
+    }
+
+    return getAuthPayload()?.role ?? null
+  }, [hydrated])
+  const visibleNavItems = useMemo(() => {
+    if (currentRole === "SUPER_ADMIN") {
+      return navItems
+    }
+
+    return navItems.filter((item) => !item.adminOnly)
+  }, [currentRole])
 
   const currentPage = useMemo(() => {
     const direct = pageMetadata[pathname]
@@ -180,7 +195,7 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
           </div>
 
           <nav className="flex-1 space-y-2 px-2 py-4">
-            {navItems.map(({ href, label, icon: Icon }) => {
+            {visibleNavItems.map(({ href, label, icon: Icon }) => {
               const active = pathname === href
 
               return (
@@ -224,7 +239,7 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
             <SheetDescription>Monitoring System</SheetDescription>
           </SheetHeader>
           <div className="space-y-2 px-3 py-4">
-            {navItems.map(({ href, label, icon: Icon }) => (
+            {visibleNavItems.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
