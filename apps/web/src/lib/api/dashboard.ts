@@ -1,8 +1,17 @@
 import { apiClient } from '@/lib/api/client'
-import type { Activity, DashboardStats, EquipmentSummary } from '@/types/dashboard'
+import type {
+  Activity,
+  AnalyticsSummary,
+  DashboardStats,
+  EquipmentSummary,
+} from '@/types/dashboard'
 
 export function getDashboardStats() {
   return apiClient<DashboardStats>('/dashboard/stats', { cache: 'no-store' })
+}
+
+export function getDashboardAnalytics() {
+  return apiClient<AnalyticsSummary>('/dashboard/analytics', { cache: 'no-store' })
 }
 
 export function getRecentActivities() {

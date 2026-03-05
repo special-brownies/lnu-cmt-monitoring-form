@@ -138,6 +138,7 @@ export default function UsersPage() {
     mutationFn: createFaculty,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
     },
     onError: (error) => {
       notifyError(
@@ -152,6 +153,7 @@ export default function UsersPage() {
     mutationFn: createSuperAdmin,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admins"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
     },
     onError: (error) => {
       notifyError(
@@ -166,6 +168,7 @@ export default function UsersPage() {
     mutationFn: updateFaculty,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
     },
     onError: (error) => {
       notifyError(
@@ -180,6 +183,7 @@ export default function UsersPage() {
     mutationFn: updateSuperAdmin,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admins"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
     },
     onError: (error) => {
       notifyError(
@@ -194,6 +198,7 @@ export default function UsersPage() {
     mutationFn: resetFacultyPassword,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
       notifySuccess("Password reset successfully.")
     },
     onError: (error) => {
@@ -209,6 +214,7 @@ export default function UsersPage() {
     mutationFn: deleteFaculty,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
       notifySuccess("User deleted.")
     },
     onError: (error) => {
@@ -224,6 +230,7 @@ export default function UsersPage() {
     mutationFn: deleteSuperAdmin,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admins"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
       notifySuccess("Admin deleted.")
     },
     onError: (error) => {

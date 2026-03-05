@@ -45,7 +45,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
-  { href: "/analytics", label: "Analytics", icon: BarChart3Icon },
+  { href: "/analytics", label: "Analytics", icon: BarChart3Icon, adminOnly: true },
   { href: "/users", label: "User Management", icon: UsersRoundIcon, adminOnly: true },
   { href: "/equipment", label: "Equipment", icon: BoxesIcon },
   { href: "/maintenance", label: "Maintenance", icon: Settings2Icon, adminOnly: true },

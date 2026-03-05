@@ -252,6 +252,7 @@ export default function EquipmentPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["equipment"] })
       await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
       setAddOpen(false)
       setAddError(null)
       setAddForm(defaultAddForm)
@@ -266,6 +267,7 @@ export default function EquipmentPage() {
     onSuccess: async (_, payload) => {
       await queryClient.invalidateQueries({ queryKey: ["equipment"] })
       await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
       await queryClient.invalidateQueries({ queryKey: ["equipment", "timeline", payload.id] })
       const statusChanged = payload.previousStatus !== payload.status
       if (!statusChanged) {
@@ -285,6 +287,7 @@ export default function EquipmentPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["equipment"] })
       await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
       notifySuccess("Equipment deleted.")
       setDeleteTarget(null)
     },

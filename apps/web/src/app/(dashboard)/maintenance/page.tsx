@@ -131,6 +131,7 @@ function MaintenanceManagementContent() {
       await queryClient.invalidateQueries({ queryKey: ["maintenance"] })
       await queryClient.invalidateQueries({ queryKey: ["equipment"] })
       await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
       await queryClient.invalidateQueries({ queryKey: ["activities", "recent"] })
       await queryClient.invalidateQueries({
         queryKey: ["equipment", "timeline", payload.equipmentId],
@@ -149,6 +150,7 @@ function MaintenanceManagementContent() {
       await queryClient.invalidateQueries({ queryKey: ["maintenance"] })
       await queryClient.invalidateQueries({ queryKey: ["equipment"] })
       await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
       await queryClient.invalidateQueries({ queryKey: ["activities", "recent"] })
       await queryClient.invalidateQueries({
         queryKey: ["equipment", "timeline", record.equipmentId],
