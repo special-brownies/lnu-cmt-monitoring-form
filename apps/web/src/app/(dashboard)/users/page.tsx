@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import {
   type ColumnDef,
   flexRender,
@@ -22,6 +22,10 @@ import { EditAdminDialog } from "@/components/user-management/edit-admin-dialog"
 import { EditUserDialog } from "@/components/user-management/edit-user-dialog"
 import { ResetPasswordDialog } from "@/components/user-management/reset-password-dialog"
 import { ApiError } from "@/lib/api/client"
+import {
+  notifyError,
+  notifySuccess,
+} from "@/lib/activity-toast"
 import {
   createFaculty,
   deleteFaculty,
@@ -62,11 +66,6 @@ type UserManagementRow = {
   faculty: FacultyRecord | null
   admin: SuperAdminRecord | null
 }
-
-type ToastState = {
-  type: "success" | "error"
-  message: string
-} | null
 
 function statusBadgeClass(status: FacultyStatus) {
   if (status === "INACTIVE") {
@@ -123,7 +122,6 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL")
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL")
   const [sort, setSort] = useState<SortOption>("NEWEST")
-  const [toast, setToast] = useState<ToastState>(null)
   const queryClient = useQueryClient()
 
   const facultyQuery = useQuery({
@@ -136,29 +134,17 @@ export default function UsersPage() {
     queryFn: getSuperAdminList,
   })
 
-  useEffect(() => {
-    if (!toast) {
-      return
-    }
-
-    const timeout = window.setTimeout(() => setToast(null), 2500)
-    return () => window.clearTimeout(timeout)
-  }, [toast])
-
   const createUserMutation = useMutation({
     mutationFn: createFaculty,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
-      setToast({ type: "success", message: "User created" })
     },
     onError: (error) => {
-      setToast({
-        type: "error",
-        message:
-          error instanceof ApiError || error instanceof Error
-            ? error.message
-            : "Failed to create user",
-      })
+      notifyError(
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : "Failed to create user",
+      )
     },
   })
 
@@ -166,16 +152,13 @@ export default function UsersPage() {
     mutationFn: createSuperAdmin,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admins"] })
-      setToast({ type: "success", message: "Admin created" })
     },
     onError: (error) => {
-      setToast({
-        type: "error",
-        message:
-          error instanceof ApiError || error instanceof Error
-            ? error.message
-            : "Failed to create admin",
-      })
+      notifyError(
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : "Failed to create admin",
+      )
     },
   })
 
@@ -183,16 +166,13 @@ export default function UsersPage() {
     mutationFn: updateFaculty,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
-      setToast({ type: "success", message: "User updated" })
     },
     onError: (error) => {
-      setToast({
-        type: "error",
-        message:
-          error instanceof ApiError || error instanceof Error
-            ? error.message
-            : "Failed to update user",
-      })
+      notifyError(
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : "Failed to update user",
+      )
     },
   })
 
@@ -200,16 +180,13 @@ export default function UsersPage() {
     mutationFn: updateSuperAdmin,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admins"] })
-      setToast({ type: "success", message: "Admin updated" })
     },
     onError: (error) => {
-      setToast({
-        type: "error",
-        message:
-          error instanceof ApiError || error instanceof Error
-            ? error.message
-            : "Failed to update admin",
-      })
+      notifyError(
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : "Failed to update admin",
+      )
     },
   })
 
@@ -217,16 +194,14 @@ export default function UsersPage() {
     mutationFn: resetFacultyPassword,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
-      setToast({ type: "success", message: "Password reset" })
+      notifySuccess("Password reset successfully.")
     },
     onError: (error) => {
-      setToast({
-        type: "error",
-        message:
-          error instanceof ApiError || error instanceof Error
-            ? error.message
-            : "Failed to reset password",
-      })
+      notifyError(
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : "Failed to reset password",
+      )
     },
   })
 
@@ -234,16 +209,14 @@ export default function UsersPage() {
     mutationFn: deleteFaculty,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["faculty"] })
-      setToast({ type: "success", message: "User deleted" })
+      notifySuccess("User deleted.")
     },
     onError: (error) => {
-      setToast({
-        type: "error",
-        message:
-          error instanceof ApiError || error instanceof Error
-            ? error.message
-            : "Failed to delete user",
-      })
+      notifyError(
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : "Failed to delete user",
+      )
     },
   })
 
@@ -251,16 +224,14 @@ export default function UsersPage() {
     mutationFn: deleteSuperAdmin,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admins"] })
-      setToast({ type: "success", message: "Admin deleted" })
+      notifySuccess("Admin deleted.")
     },
     onError: (error) => {
-      setToast({
-        type: "error",
-        message:
-          error instanceof ApiError || error instanceof Error
-            ? error.message
-            : "Failed to delete admin",
-      })
+      notifyError(
+        error instanceof ApiError || error instanceof Error
+          ? error.message
+          : "Failed to delete admin",
+      )
     },
   })
 
@@ -418,18 +389,6 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-4">
-      {toast && (
-        <div
-          className={`fixed top-5 right-5 z-50 rounded-lg px-4 py-2 text-sm text-white shadow-lg ${
-            toast.type === "success" ? "bg-emerald-600" : "bg-rose-600"
-          }`}
-          role="status"
-          aria-live="polite"
-        >
-          {toast.message}
-        </div>
-      )}
-
       <Card className="border-slate-200">
         <CardHeader>
           <CardTitle className="text-xl text-slate-900">User Management</CardTitle>

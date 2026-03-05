@@ -1,10 +1,11 @@
 "use client"
 
-import { FormEvent, useEffect, useMemo, useState } from "react"
+import { FormEvent, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ClockIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { notifyError, notifySuccess } from "@/lib/activity-toast"
 import { getCategories } from "@/lib/api/categories"
 import {
   createEquipment,
@@ -44,10 +45,6 @@ import { SortSelect } from "@/components/ui/sort-select"
 import { sortCollection, type SortOption } from "@/lib/sort"
 
 type StatusFilterValue = "ALL" | EquipmentStatus
-type ToastState = {
-  type: "success" | "error"
-  message: string
-} | null
 
 type EquipmentFormState = {
   name: string
@@ -164,7 +161,6 @@ export default function EquipmentPage() {
   )
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get("category") ?? "ALL")
   const [sort, setSort] = useState<SortOption>("NEWEST")
-  const [toast, setToast] = useState<ToastState>(null)
 
   const [addOpen, setAddOpen] = useState(false)
   const [addForm, setAddForm] = useState<EquipmentFormState>(defaultAddForm)
@@ -251,15 +247,6 @@ export default function EquipmentPage() {
   const isEditOtherSelected =
     otherCategoryId !== null && editForm.categoryId === otherCategoryId
 
-  useEffect(() => {
-    if (!toast) {
-      return
-    }
-
-    const timeout = window.setTimeout(() => setToast(null), 2500)
-    return () => window.clearTimeout(timeout)
-  }, [toast])
-
   const openAddDialog = () => {
     setAddForm((current) => ({
       ...current,
@@ -274,7 +261,6 @@ export default function EquipmentPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["equipment"] })
       await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
-      setToast({ type: "success", message: "Equipment created" })
       setAddOpen(false)
       setAddError(null)
       setAddForm(defaultAddForm)
@@ -290,7 +276,10 @@ export default function EquipmentPage() {
       await queryClient.invalidateQueries({ queryKey: ["equipment"] })
       await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
       await queryClient.invalidateQueries({ queryKey: ["equipment", "timeline", payload.id] })
-      setToast({ type: "success", message: "Equipment updated" })
+      const statusChanged = payload.previousStatus !== payload.status
+      if (!statusChanged) {
+        notifySuccess("Equipment details updated.")
+      }
       setEditOpen(false)
       setEditError(null)
       setSelectedEquipment(null)
@@ -305,14 +294,13 @@ export default function EquipmentPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["equipment"] })
       await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
-      setToast({ type: "success", message: "Equipment deleted" })
+      notifySuccess("Equipment deleted.")
       setDeleteTarget(null)
     },
     onError: (error) => {
-      setToast({
-        type: "error",
-        message: error instanceof Error ? error.message : "Unable to delete equipment",
-      })
+      notifyError(
+        error instanceof Error ? error.message : "Unable to delete equipment",
+      )
     },
   })
 
@@ -457,18 +445,6 @@ export default function EquipmentPage() {
 
   return (
     <div className="space-y-4">
-      {toast && (
-        <div
-          className={`fixed top-5 right-5 z-50 rounded-lg px-4 py-2 text-sm text-white shadow-lg ${
-            toast.type === "success" ? "bg-emerald-600" : "bg-rose-600"
-          }`}
-          role="status"
-          aria-live="polite"
-        >
-          {toast.message}
-        </div>
-      )}
-
       <Card className="border-slate-200">
         <CardHeader>
           <CardTitle className="text-xl text-slate-900">Equipment Management</CardTitle>

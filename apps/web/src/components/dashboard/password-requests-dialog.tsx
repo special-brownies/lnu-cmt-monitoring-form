@@ -15,47 +15,16 @@ import {
 import { Input } from "@/components/ui/input"
 import { SortSelect } from "@/components/ui/sort-select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { apiClient } from "@/lib/api/client"
+import { notifyError } from "@/lib/activity-toast"
+import {
+  getPasswordRequests,
+  PasswordRequestRecord,
+  resolvePasswordRequest,
+} from "@/lib/api/password-requests"
 import { sortCollection, type SortOption } from "@/lib/sort"
-
-type PasswordRequestRecord = {
-  id: string
-  status: "PENDING" | "COMPLETED"
-  requestedAt: string
-  resolvedAt: string | null
-  faculty: {
-    id: string
-    employeeId: string
-    name: string
-  }
-}
-
-type ResolvePayload = {
-  requestId: string
-  newPassword: string
-}
 
 type PasswordRequestsDialogProps = {
   trigger: ReactElement
-}
-
-async function getPasswordRequests() {
-  return apiClient<PasswordRequestRecord[]>("/password-requests", {
-    cache: "no-store",
-  })
-}
-
-async function resolvePasswordRequest(payload: ResolvePayload) {
-  return apiClient<PasswordRequestRecord>(
-    `/password-requests/${payload.requestId}/resolve`,
-    {
-      method: "POST",
-      body: JSON.stringify({ newPassword: payload.newPassword }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    },
-  )
 }
 
 export function PasswordRequestsDialog({ trigger }: PasswordRequestsDialogProps) {
@@ -83,7 +52,9 @@ export function PasswordRequestsDialog({ trigger }: PasswordRequestsDialogProps)
       await queryClient.invalidateQueries({ queryKey: ["password-requests"] })
     },
     onError: (error) => {
-      setLocalError(error instanceof Error ? error.message : "Failed to resolve request")
+      const message = error instanceof Error ? error.message : "Failed to resolve request"
+      setLocalError(message)
+      notifyError(message)
     },
   })
 

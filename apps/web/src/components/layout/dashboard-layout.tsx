@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { ReactNode, useMemo, useState } from "react"
+import { ReactNode, useMemo, useState, useSyncExternalStore } from "react"
 import {
   BarChart3Icon,
   BoxesIcon,
@@ -64,12 +64,49 @@ const pageMetadata: Record<
   "/maintenance": { label: "Maintenance", showWelcome: false },
 }
 
+let shellHydrated = false
+const shellHydrationSubscribers = new Set<() => void>()
+
+function subscribeShellHydration(callback: () => void) {
+  shellHydrationSubscribers.add(callback)
+
+  if (!shellHydrated) {
+    shellHydrated = true
+    Promise.resolve().then(() => {
+      for (const subscriber of shellHydrationSubscribers) {
+        subscriber()
+      }
+    })
+  }
+
+  return () => {
+    shellHydrationSubscribers.delete(callback)
+  }
+}
+
+function getShellHydrationSnapshot() {
+  return shellHydrated
+}
+
+function getShellHydrationServerSnapshot() {
+  return false
+}
+
 export default function DashboardLayoutShell({ children }: DashboardShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [displayName] = useState(() => {
+  const hydrated = useSyncExternalStore(
+    subscribeShellHydration,
+    getShellHydrationSnapshot,
+    getShellHydrationServerSnapshot,
+  )
+  const displayName = useMemo(() => {
+    if (!hydrated) {
+      return "System User"
+    }
+
     const payload = getAuthPayload()
 
     if (payload?.name) {
@@ -85,7 +122,7 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
     }
 
     return "System User"
-  })
+  }, [hydrated])
 
   const currentPage = useMemo(() => {
     const direct = pageMetadata[pathname]

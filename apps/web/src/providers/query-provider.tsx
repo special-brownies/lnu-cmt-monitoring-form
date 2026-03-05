@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactNode, useState } from 'react'
+import { GlobalToaster } from '@/components/ui/global-toaster'
 
 type QueryProviderProps = {
   children: ReactNode
@@ -21,5 +22,10 @@ export function QueryProvider({ children }: QueryProviderProps) {
       }),
   )
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <GlobalToaster />
+    </QueryClientProvider>
+  )
 }

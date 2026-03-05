@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { FormEvent, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { notifyError } from '@/lib/activity-toast'
+import { submitPasswordRequest } from '@/lib/api/password-requests'
 
 export default function ForgotPasswordPage() {
   const [employeeId, setEmployeeId] = useState('')
@@ -18,26 +20,16 @@ export default function ForgotPasswordPage() {
 
     if (!apiUrl) {
       setMessage('Missing NEXT_PUBLIC_API_URL')
+      notifyError('Missing NEXT_PUBLIC_API_URL')
       return
     }
 
     setLoading(true)
 
     try {
-      const response = await fetch(`${apiUrl}/password-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId: employeeId.trim().toUpperCase() }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`)
-      }
-
-      setMessage('If an account exists, a request has been submitted')
+      const resultMessage = await submitPasswordRequest(employeeId)
+      setMessage(resultMessage)
       setEmployeeId('')
-    } catch {
-      setMessage('If an account exists, a request has been submitted')
     } finally {
       setLoading(false)
     }

@@ -1,4 +1,5 @@
 import { ApiError, apiClient } from "@/lib/api/client"
+import { notifyUserCreated, notifyUserEdited } from "@/lib/activity-toast"
 import type {
   CreateFacultyInput,
   FacultyRecord,
@@ -40,17 +41,19 @@ export async function createFaculty(input: CreateFacultyInput) {
   }
 
   try {
-    return await apiClient<FacultyRecord>("/faculty", {
+    const created = await apiClient<FacultyRecord>("/faculty", {
       method: "POST",
       headers: JSON_HEADERS,
       body: JSON.stringify(withStatus),
     })
+    notifyUserCreated()
+    return created
   } catch (error) {
     if (!shouldFallbackStatus(error)) {
       throw error
     }
 
-    return apiClient<FacultyRecord>("/faculty", {
+    const created = await apiClient<FacultyRecord>("/faculty", {
       method: "POST",
       headers: JSON_HEADERS,
       body: JSON.stringify({
@@ -59,6 +62,8 @@ export async function createFaculty(input: CreateFacultyInput) {
         password: input.password,
       }),
     })
+    notifyUserCreated()
+    return created
   }
 }
 
@@ -70,17 +75,19 @@ export async function updateFaculty(input: UpdateFacultyInput) {
   }
 
   try {
-    return await apiClient<FacultyRecord>(`/faculty/${input.id}`, {
+    const updated = await apiClient<FacultyRecord>(`/faculty/${input.id}`, {
       method: "PATCH",
       headers: JSON_HEADERS,
       body: JSON.stringify(withStatus),
     })
+    notifyUserEdited()
+    return updated
   } catch (error) {
     if (!shouldFallbackStatus(error)) {
       throw error
     }
 
-    return apiClient<FacultyRecord>(`/faculty/${input.id}`, {
+    const updated = await apiClient<FacultyRecord>(`/faculty/${input.id}`, {
       method: "PATCH",
       headers: JSON_HEADERS,
       body: JSON.stringify({
@@ -88,6 +95,8 @@ export async function updateFaculty(input: UpdateFacultyInput) {
         employeeId: input.employeeId,
       }),
     })
+    notifyUserEdited()
+    return updated
   }
 }
 

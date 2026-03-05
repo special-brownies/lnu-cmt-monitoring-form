@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api/client"
+import { notifyAdminCreated, notifyAdminEdited } from "@/lib/activity-toast"
 import type {
   CreateSuperAdminInput,
   SuperAdminRecord,
@@ -20,6 +21,9 @@ export function createSuperAdmin(input: CreateSuperAdminInput) {
       password: input.password,
       status: input.status,
     }),
+  }).then((created) => {
+    notifyAdminCreated()
+    return created
   })
 }
 
@@ -38,6 +42,9 @@ export function updateSuperAdmin(input: UpdateSuperAdminInput) {
       email: input.email,
       status: input.status,
     }),
+  }).then((updated) => {
+    notifyAdminEdited()
+    return updated
   })
 }
 

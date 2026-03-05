@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api/client"
+import { notifyEquipmentStatusChange } from "@/lib/activity-toast"
 import type {
   CreateEquipmentInput,
   EquipmentFilters,
@@ -21,6 +22,9 @@ type CreateStatusHistoryInput = {
   equipmentId: number
   status: string
   notes?: string
+  previousStatus?: string
+  equipmentName?: string
+  notifyToast?: boolean
 }
 
 type CreateLocationHistoryInput = {
@@ -74,14 +78,28 @@ export function getEquipmentList(filters: EquipmentFilters = {}) {
   })
 }
 
-function createStatusHistory(payload: CreateStatusHistoryInput) {
-  return apiClient("/status-history", {
+async function createStatusHistory(payload: CreateStatusHistoryInput) {
+  const statusHistory = await apiClient("/status-history", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      equipmentId: payload.equipmentId,
+      status: payload.status,
+      notes: payload.notes,
+    }),
   })
+
+  if (payload.notifyToast ?? true) {
+    notifyEquipmentStatusChange(
+      payload.status,
+      payload.previousStatus,
+      payload.equipmentName,
+    )
+  }
+
+  return statusHistory
 }
 
 function createLocationHistory(payload: CreateLocationHistoryInput) {
@@ -114,6 +132,8 @@ export async function createEquipment(input: CreateEquipmentInput) {
   await createStatusHistory({
     equipmentId: equipment.id,
     status: input.status,
+    equipmentName: equipment.name,
+    notifyToast: true,
   })
 
   if (input.roomId !== undefined) {
@@ -156,6 +176,9 @@ export async function updateEquipment(input: UpdateEquipmentInput) {
       equipmentId: input.id,
       status: input.status,
       notes,
+      previousStatus: statusChanged ? input.previousStatus : undefined,
+      equipmentName: equipment.name,
+      notifyToast: statusChanged,
     })
   }
 

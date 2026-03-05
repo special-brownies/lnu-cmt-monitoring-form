@@ -1,6 +1,6 @@
 "use client"
 
-import { type ComponentType, useMemo, useState } from "react"
+import { type ComponentType, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -22,11 +22,11 @@ import { EmptyState } from "@/components/dashboard/empty-state"
 import { QuickActions } from "@/components/dashboard/quick-actions"
 import { RecentActivityDialog } from "@/components/dashboard/recent-activity-dialog"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { notifyInfo } from "@/lib/activity-toast"
 import {
   getDashboardStats,
   getRecentActivities,
 } from "@/lib/api/dashboard"
-import { getUserRole } from "@/lib/auth"
 import type { DashboardStats } from "@/types/dashboard"
 
 type StatCardProps = {
@@ -70,7 +70,6 @@ function StatCard({ icon: Icon, label, valueSelector }: StatCardProps) {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [toast, setToast] = useState<string | null>(null)
 
   const activitiesQuery = useQuery({
     queryKey: ["activities", "recent"],
@@ -78,7 +77,7 @@ export default function DashboardPage() {
   })
 
   const { data: currentUser } = useCurrentUser()
-  const role = currentUser?.role ?? getUserRole()
+  const role = currentUser?.role
   const isAdmin = role === "SUPER_ADMIN"
 
   const sortedActivities = useMemo(() => {
@@ -90,21 +89,14 @@ export default function DashboardPage() {
   }, [activitiesQuery.data])
 
   const showDevelopingToast = (path: string, message: string) => {
-    setToast(message)
+    notifyInfo(message)
     window.setTimeout(() => {
       router.push(path)
-      setToast(null)
     }, 350)
   }
 
   return (
     <div className="space-y-6">
-      {toast && (
-        <div className="fixed top-5 right-5 z-50 rounded-lg bg-slate-900 px-4 py-2 text-sm text-white shadow-lg">
-          {toast}
-        </div>
-      )}
-
       <section>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Welcome to LNU CMT Dashboard</h1>
         <p className="mt-1 text-sm text-slate-600 md:text-base">Monitor and manage your IT assets</p>

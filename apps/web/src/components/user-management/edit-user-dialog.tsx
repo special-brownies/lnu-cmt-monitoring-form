@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
+import { FormEvent, useMemo, useState } from "react"
 import { PencilIcon } from "lucide-react"
 import { ActionIcon } from "@/components/ui/action-icon"
 import { Button } from "@/components/ui/button"
@@ -33,26 +33,11 @@ export function EditUserDialog({
   const [name, setName] = useState(faculty.name)
   const [employeeId, setEmployeeId] = useState(faculty.employeeId)
   const [nextStatus, setNextStatus] = useState<FacultyStatus>(status)
-  const initialValues = useRef({
+  const [initialValues, setInitialValues] = useState({
     name: faculty.name,
     employeeId: faculty.employeeId,
     status,
   })
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    setName(faculty.name)
-    setEmployeeId(faculty.employeeId)
-    setNextStatus(status)
-    initialValues.current = {
-      name: faculty.name,
-      employeeId: faculty.employeeId,
-      status,
-    }
-  }, [faculty.employeeId, faculty.name, open, status])
 
   const values = useMemo(
     () => ({
@@ -64,8 +49,8 @@ export function EditUserDialog({
   )
 
   const hasChanges = useMemo(() => {
-    return JSON.stringify(values) !== JSON.stringify(initialValues.current)
-  }, [values])
+    return JSON.stringify(values) !== JSON.stringify(initialValues)
+  }, [initialValues, values])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -82,8 +67,25 @@ export function EditUserDialog({
     }
   }
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+
+    if (!nextOpen) {
+      return
+    }
+
+    setName(faculty.name)
+    setEmployeeId(faculty.employeeId)
+    setNextStatus(status)
+    setInitialValues({
+      name: faculty.name,
+      employeeId: faculty.employeeId,
+      status,
+    })
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <ActionIcon icon={PencilIcon} label={`Edit ${faculty.name}`} />
       </DialogTrigger>

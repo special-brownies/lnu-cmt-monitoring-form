@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode, useEffect, useSyncExternalStore } from 'react'
+import { ReactNode, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   AuthRole,
@@ -15,16 +15,51 @@ type AuthGuardProps = {
   allowedRoles?: AuthRole[]
 }
 
+let hydratedClient = false
+const hydrationSubscribers = new Set<() => void>()
+
+function subscribeHydration(callback: () => void) {
+  hydrationSubscribers.add(callback)
+
+  if (!hydratedClient) {
+    hydratedClient = true
+    Promise.resolve().then(() => {
+      for (const subscriber of hydrationSubscribers) {
+        subscriber()
+      }
+    })
+  }
+
+  return () => {
+    hydrationSubscribers.delete(callback)
+  }
+}
+
+function getHydrationSnapshot() {
+  return hydratedClient
+}
+
+function getHydrationServerSnapshot() {
+  return false
+}
+
 export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
   const router = useRouter()
   const pathname = usePathname()
   const hydrated = useSyncExternalStore(
-    () => () => undefined,
-    () => true,
-    () => false,
+    subscribeHydration,
+    getHydrationSnapshot,
+    getHydrationServerSnapshot,
   )
-  const authenticated = isAuthenticated()
-  const currentRole = getUserRole()
+
+  const authenticated = useMemo(
+    () => (hydrated ? isAuthenticated() : false),
+    [hydrated],
+  )
+  const currentRole = useMemo(
+    () => (hydrated ? getUserRole() : null),
+    [hydrated],
+  )
   const hasAllowedRole =
     !allowedRoles || allowedRoles.length === 0 || (currentRole ? allowedRoles.includes(currentRole) : false)
 
