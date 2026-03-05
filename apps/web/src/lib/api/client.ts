@@ -1,3 +1,5 @@
+import { getToken, markSessionActivity } from '@/lib/auth'
+
 type ApiEnvelope<T> = {
   success?: boolean
   data?: T
@@ -28,11 +30,7 @@ function getApiBaseUrl() {
 }
 
 function getAuthToken() {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  return localStorage.getItem('access_token') ?? localStorage.getItem('token')
+  return getToken()
 }
 
 function normalizeErrorMessage(payload: unknown, fallbackStatusText: string) {
@@ -74,6 +72,7 @@ export async function apiClient<T>(
 
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`)
+    markSessionActivity()
   }
 
   const response = await fetch(`${baseUrl}${normalizedEndpoint}`, {
@@ -112,8 +111,10 @@ export async function apiClient<T>(
     typeof payload === 'object' &&
     Object.prototype.hasOwnProperty.call(payload, 'data')
   ) {
+    markSessionActivity()
     return (payload as ApiEnvelope<T>).data as T
   }
 
+  markSessionActivity()
   return payload as T
 }

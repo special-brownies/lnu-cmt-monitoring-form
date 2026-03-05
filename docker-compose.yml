@@ -37,6 +37,7 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3000
       - INTERNAL_API_URL=http://api:3000
+      - NEXT_PUBLIC_SESSION_TIMEOUT_MS=${NEXT_PUBLIC_SESSION_TIMEOUT_MS:-1800000}
     depends_on:
       - api
 

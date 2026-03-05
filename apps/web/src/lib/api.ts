@@ -1,3 +1,5 @@
+import { getToken, markSessionActivity } from '@/lib/auth'
+
 type ApiFetchOptions = RequestInit & {
   token?: string
 }
@@ -27,15 +29,11 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) 
   const hasBody = options.body !== undefined && options.body !== null
   const isStringBody = typeof options.body === 'string'
 
-  const localToken =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('access_token') ?? localStorage.getItem('token')
-      : null
-
-  const token = options.token ?? localToken
+  const token = options.token ?? getToken()
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)
+    markSessionActivity()
   }
 
   const response = await fetch(`${API_URL}${normalizedEndpoint}`, {
@@ -48,5 +46,6 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) 
     throw new Error(`API error: ${response.status}`)
   }
 
+  markSessionActivity()
   return response.json()
 }
