@@ -8,6 +8,10 @@ import { PrismaService } from '../../prisma/prisma.service'
 import { CreateRoomDto } from './dto/create-room.dto'
 import { UpdateRoomDto } from './dto/update-room.dto'
 
+type CurrentRoomAssignmentRow = {
+  count: bigint | number
+}
+
 @Injectable()
 export class RoomService {
   constructor(private readonly prisma: PrismaService) {}
@@ -40,6 +44,13 @@ export class RoomService {
 
   async remove(id: number) {
     await this.ensureExists(id)
+    const currentAssignmentCount = await this.countCurrentAssignments(id)
+
+    if (currentAssignmentCount > 0) {
+      throw new BadRequestException(
+        'Cannot delete this room because it is currently assigned to equipment',
+      )
+    }
 
     try {
       return await this.prisma.room.delete({ where: { id } })
@@ -56,6 +67,26 @@ export class RoomService {
     }
 
     return room
+  }
+
+  private async countCurrentAssignments(roomId: number): Promise<number> {
+    const result = await this.prisma.$queryRaw<CurrentRoomAssignmentRow[]>`
+      SELECT COUNT(*)::bigint AS count
+      FROM (
+        SELECT DISTINCT ON ("equipmentId") "equipmentId", "roomId"
+        FROM "EquipmentLocationHistory"
+        ORDER BY "equipmentId", "assignedAt" DESC, "id" DESC
+      ) AS latest
+      WHERE latest."roomId" = ${roomId}
+    `
+
+    const rawCount = result[0]?.count ?? 0
+
+    if (typeof rawCount === 'bigint') {
+      return Number(rawCount)
+    }
+
+    return rawCount
   }
 
   private handlePrismaError(error: unknown, entity: string): never {

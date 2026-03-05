@@ -12,6 +12,16 @@ export type MaintenanceRecord = {
   createdAt: string
   updatedAt: string
   completedAt?: string | null
+  scheduledBy?: {
+    id: string
+    name: string
+    email: string
+  } | null
+  completedBy?: {
+    id: string
+    name: string
+    email: string
+  } | null
   equipment: EquipmentRecord
 }
 

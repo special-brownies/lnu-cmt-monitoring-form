@@ -1,11 +1,12 @@
 "use client"
 
-import { FormEvent, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CheckCircle2Icon, ClockIcon, PlusIcon, WrenchIcon } from "lucide-react"
+import { CheckCircle2Icon, ClockIcon, FileTextIcon, PlusIcon } from "lucide-react"
 import AuthGuard from "@/components/auth/AuthGuard"
 import { EmptyState } from "@/components/dashboard/empty-state"
 import { EquipmentTimelineDialog } from "@/components/equipment/equipment-timeline-dialog"
+import { ScheduleMaintenanceDialog } from "@/components/maintenance/schedule-maintenance-dialog"
 import { ActionIcon } from "@/components/ui/action-icon"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,34 +22,18 @@ import {
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SortSelect } from "@/components/ui/sort-select"
-import { getEquipmentList } from "@/lib/api/equipment"
 import {
   completeMaintenance,
   getMaintenanceRecords,
-  scheduleMaintenance,
 } from "@/lib/api/maintenance"
 import { sortCollection, type SortOption } from "@/lib/sort"
 import type { EquipmentRecord } from "@/types/equipment"
 import type {
+  MaintenanceRecord,
   MaintenanceStatus,
-  ScheduleMaintenanceInput,
 } from "@/types/maintenance"
 
 type MaintenanceFilter = "ALL" | MaintenanceStatus
-
-type ScheduleFormState = {
-  equipmentId: string
-  technician: string
-  notes: string
-  scheduledDate: string
-}
-
-const defaultScheduleForm: ScheduleFormState = {
-  equipmentId: "",
-  technician: "",
-  notes: "",
-  scheduledDate: "",
-}
 
 function formatDateOnly(value?: string | Date | null) {
   if (!value) {
@@ -57,21 +42,6 @@ function formatDateOnly(value?: string | Date | null) {
 
   const date = new Date(value)
   return date.toISOString().slice(0, 10)
-}
-
-function normalizeEquipmentStatus(status?: string | null) {
-  const normalized = status?.trim().toUpperCase() ?? ""
-
-  if (normalized === "ACTIVE") {
-    return "ASSIGNED"
-  }
-
-  return normalized
-}
-
-function isMaintenanceCandidate(equipment: EquipmentRecord) {
-  const status = normalizeEquipmentStatus(equipment.currentStatus?.status)
-  return status === "AVAILABLE" || status === "ASSIGNED"
 }
 
 function statusBadgeClass(status: MaintenanceStatus) {
@@ -104,9 +74,8 @@ function MaintenanceManagementContent() {
   const [statusFilter, setStatusFilter] = useState<MaintenanceFilter>("ALL")
   const [sort, setSort] = useState<SortOption>("NEWEST")
   const [scheduleOpen, setScheduleOpen] = useState(false)
-  const [scheduleError, setScheduleError] = useState<string | null>(null)
   const [selectedTimelineEquipment, setSelectedTimelineEquipment] = useState<EquipmentRecord | null>(null)
-  const [scheduleForm, setScheduleForm] = useState<ScheduleFormState>(defaultScheduleForm)
+  const [selectedNoteRecord, setSelectedNoteRecord] = useState<MaintenanceRecord | null>(null)
 
   const maintenanceQuery = useQuery({
     queryKey: ["maintenance", search, statusFilter],
@@ -115,33 +84,6 @@ function MaintenanceManagementContent() {
         search: search.trim() || undefined,
         status: statusFilter === "ALL" ? undefined : statusFilter,
       }),
-  })
-
-  const equipmentQuery = useQuery({
-    queryKey: ["equipment", "schedule-candidates"],
-    queryFn: () => getEquipmentList(),
-  })
-
-  const scheduleMutation = useMutation({
-    mutationFn: scheduleMaintenance,
-    onSuccess: async (_, payload) => {
-      setScheduleOpen(false)
-      setScheduleForm(defaultScheduleForm)
-      setScheduleError(null)
-      await queryClient.invalidateQueries({ queryKey: ["maintenance"] })
-      await queryClient.invalidateQueries({ queryKey: ["equipment"] })
-      await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
-      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
-      await queryClient.invalidateQueries({ queryKey: ["activities", "recent"] })
-      await queryClient.invalidateQueries({
-        queryKey: ["equipment", "timeline", payload.equipmentId],
-      })
-    },
-    onError: (error) => {
-      setScheduleError(
-        error instanceof Error ? error.message : "Unable to schedule maintenance",
-      )
-    },
   })
 
   const completeMutation = useMutation({
@@ -165,63 +107,6 @@ function MaintenanceManagementContent() {
       getDateValue: (record) => record.scheduledDate,
     })
   }, [maintenanceQuery.data, sort])
-
-  const scheduleCandidates = useMemo(() => {
-    const equipments = equipmentQuery.data ?? []
-    return sortCollection(
-      equipments.filter(isMaintenanceCandidate),
-      "AZ",
-      {
-        getPrimaryText: (equipment) => equipment.name,
-        getDateValue: (equipment) => equipment.createdAt,
-      },
-    )
-  }, [equipmentQuery.data])
-
-  const selectedEquipment = useMemo(() => {
-    if (!scheduleForm.equipmentId) {
-      return null
-    }
-
-    const equipmentId = Number.parseInt(scheduleForm.equipmentId, 10)
-    if (!Number.isInteger(equipmentId)) {
-      return null
-    }
-
-    return (
-      scheduleCandidates.find((equipment) => equipment.id === equipmentId) ?? null
-    )
-  }, [scheduleCandidates, scheduleForm.equipmentId])
-
-  const handleScheduleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setScheduleError(null)
-
-    const equipmentId = Number.parseInt(scheduleForm.equipmentId, 10)
-
-    if (!Number.isInteger(equipmentId) || equipmentId <= 0) {
-      setScheduleError("Please select equipment.")
-      return
-    }
-
-    if (!scheduleForm.scheduledDate) {
-      setScheduleError("Please select a scheduled date.")
-      return
-    }
-
-    const payload: ScheduleMaintenanceInput = {
-      equipmentId,
-      scheduledDate: new Date(scheduleForm.scheduledDate).toISOString(),
-      technician: scheduleForm.technician.trim() || undefined,
-      notes: scheduleForm.notes.trim() || undefined,
-    }
-
-    try {
-      await scheduleMutation.mutateAsync(payload)
-    } catch {
-      // handled in mutation callback
-    }
-  }
 
   return (
     <div className="space-y-4">
@@ -338,6 +223,11 @@ function MaintenanceManagementContent() {
                               onClick={() => setSelectedTimelineEquipment(equipment)}
                             />
                             <ActionIcon
+                              icon={FileTextIcon}
+                              label="View maintenance note"
+                              onClick={() => setSelectedNoteRecord(record)}
+                            />
+                            <ActionIcon
                               icon={CheckCircle2Icon}
                               label="Mark maintenance as completed"
                               className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
@@ -369,139 +259,10 @@ function MaintenanceManagementContent() {
         </CardContent>
       </Card>
 
-      <Dialog
+      <ScheduleMaintenanceDialog
         open={scheduleOpen}
-        onOpenChange={(nextOpen) => {
-          setScheduleOpen(nextOpen)
-
-          if (!nextOpen) {
-            setScheduleError(null)
-            setScheduleForm(defaultScheduleForm)
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <WrenchIcon className="h-4 w-4" />
-              Schedule Maintenance
-            </DialogTitle>
-            <DialogDescription>
-              Select equipment and schedule a maintenance task.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form className="space-y-4" onSubmit={handleScheduleSubmit}>
-            <div className="space-y-1">
-              <label htmlFor="maintenance-equipment" className="text-sm font-medium text-slate-700">
-                Equipment
-              </label>
-              <select
-                id="maintenance-equipment"
-                value={scheduleForm.equipmentId}
-                onChange={(event) =>
-                  setScheduleForm((current) => ({
-                    ...current,
-                    equipmentId: event.target.value,
-                  }))
-                }
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
-                required
-              >
-                <option value="" disabled>
-                  Select equipment
-                </option>
-                {scheduleCandidates.map((equipment) => (
-                  <option key={equipment.id} value={String(equipment.id)}>
-                    {equipment.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="maintenance-serial" className="text-sm font-medium text-slate-700">
-                Serial Number
-              </label>
-              <Input
-                id="maintenance-serial"
-                value={selectedEquipment?.serialNumber ?? ""}
-                placeholder="Auto-populated"
-                readOnly
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="maintenance-technician" className="text-sm font-medium text-slate-700">
-                Assigned Technician / Staff (Optional)
-              </label>
-              <Input
-                id="maintenance-technician"
-                value={scheduleForm.technician}
-                onChange={(event) =>
-                  setScheduleForm((current) => ({
-                    ...current,
-                    technician: event.target.value,
-                  }))
-                }
-                placeholder="e.g. John Dela Cruz"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="maintenance-notes" className="text-sm font-medium text-slate-700">
-                Maintenance Notes
-              </label>
-              <textarea
-                id="maintenance-notes"
-                value={scheduleForm.notes}
-                onChange={(event) =>
-                  setScheduleForm((current) => ({
-                    ...current,
-                    notes: event.target.value,
-                  }))
-                }
-                rows={3}
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-sans focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                placeholder="Enter maintenance details"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="maintenance-date" className="text-sm font-medium text-slate-700">
-                Scheduled Date
-              </label>
-              <Input
-                id="maintenance-date"
-                type="datetime-local"
-                value={scheduleForm.scheduledDate}
-                onChange={(event) =>
-                  setScheduleForm((current) => ({
-                    ...current,
-                    scheduledDate: event.target.value,
-                  }))
-                }
-                required
-              />
-            </div>
-
-            {scheduleError && (
-              <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                {scheduleError}
-              </p>
-            )}
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setScheduleOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={scheduleMutation.isPending}>
-                {scheduleMutation.isPending ? "Scheduling..." : "Schedule Maintenance"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={setScheduleOpen}
+      />
 
       <EquipmentTimelineDialog
         open={selectedTimelineEquipment !== null}
@@ -513,6 +274,85 @@ function MaintenanceManagementContent() {
           }
         }}
       />
+
+      <Dialog
+        open={selectedNoteRecord !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setSelectedNoteRecord(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Maintenance Note</DialogTitle>
+            <DialogDescription>
+              Review maintenance schedule details and notes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedNoteRecord && (
+            <div className="space-y-4">
+              <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Equipment Name
+                  </p>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {selectedNoteRecord.equipment.name}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Serial Number
+                  </p>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {selectedNoteRecord.equipment.serialNumber}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Scheduled Date
+                  </p>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {new Date(selectedNoteRecord.scheduledDate).toLocaleString()}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Scheduled By
+                  </p>
+                  <p className="mt-1 text-sm text-slate-900">
+                    {selectedNoteRecord.scheduledBy?.name ?? "System"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Maintenance Note
+                </p>
+                <div className="max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white p-4">
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800">
+                    {selectedNoteRecord.notes?.trim().length
+                      ? selectedNoteRecord.notes
+                      : "No maintenance note was provided for this task."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSelectedNoteRecord(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

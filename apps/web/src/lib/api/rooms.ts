@@ -28,3 +28,9 @@ export function updateRoom(input: UpdateRoomInput) {
     }),
   })
 }
+
+export function deleteRoom(id: number) {
+  return apiClient<RoomRecord>(`/rooms/${id}`, {
+    method: "DELETE",
+  })
+}

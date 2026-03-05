@@ -3,8 +3,9 @@
 import { FormEvent, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ClockIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { ClockIcon, PencilIcon, PlusIcon, Trash2Icon, WrenchIcon } from "lucide-react"
 import { EquipmentTimelineDialog } from "@/components/equipment/equipment-timeline-dialog"
+import { ScheduleMaintenanceDialog } from "@/components/maintenance/schedule-maintenance-dialog"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { notifyError, notifySuccess } from "@/lib/activity-toast"
 import { getCategories } from "@/lib/api/categories"
@@ -57,7 +58,6 @@ type EquipmentFormState = {
 const REQUIRED_STATUSES: EquipmentStatus[] = [
   "ASSIGNED",
   "AVAILABLE",
-  "MAINTENANCE",
   "DEFECTIVE",
 ]
 
@@ -78,6 +78,10 @@ function normalizeEquipmentStatus(status?: string | null): EquipmentStatus {
     return "ASSIGNED"
   }
 
+  if (normalizedStatus === "ACTIVE") {
+    return "ASSIGNED"
+  }
+
   if (normalizedStatus === "MAINTENANCE") {
     return "MAINTENANCE"
   }
@@ -86,7 +90,7 @@ function normalizeEquipmentStatus(status?: string | null): EquipmentStatus {
     return "DEFECTIVE"
   }
 
-  if (normalizedStatus === "AVAILABLE" || normalizedStatus === "ACTIVE") {
+  if (normalizedStatus === "AVAILABLE") {
     return "AVAILABLE"
   }
 
@@ -94,7 +98,7 @@ function normalizeEquipmentStatus(status?: string | null): EquipmentStatus {
 }
 
 function formatStatusLabel(status: EquipmentStatus) {
-  if (status === "ASSIGNED") return "Assigned"
+  if (status === "ASSIGNED") return "Active"
   if (status === "AVAILABLE") return "Available"
   if (status === "MAINTENANCE") return "Maintenance"
   return "Defective"
@@ -172,6 +176,7 @@ export default function EquipmentPage() {
 
   const [timelineEquipment, setTimelineEquipment] = useState<EquipmentRecord | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<EquipmentRecord | null>(null)
+  const [scheduleFromEditOpen, setScheduleFromEditOpen] = useState(false)
 
   const categoryQuery = useQuery({
     queryKey: ["categories"],
@@ -231,6 +236,14 @@ export default function EquipmentPage() {
   const hasEditChanges = useMemo(() => {
     return JSON.stringify(normalizeFormValues(editForm)) !== JSON.stringify(normalizeFormValues(initialEditForm))
   }, [editForm, initialEditForm])
+  const canScheduleSelectedEquipment = useMemo(() => {
+    if (!selectedEquipment) {
+      return false
+    }
+
+    const status = normalizeEquipmentStatus(selectedEquipment.currentStatus?.status)
+    return status === "ASSIGNED" || status === "AVAILABLE"
+  }, [selectedEquipment])
 
   const otherCategoryId = otherCategory ? String(otherCategory.id) : null
   const isAddOtherSelected =
@@ -793,147 +806,152 @@ export default function EquipmentPage() {
           </DialogHeader>
 
           <form className="grid gap-4 md:grid-cols-2" onSubmit={handleEditSave}>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700" htmlFor="edit-equipment-name">
-                  Equipment Name
-                </label>
-                <Input
-                  id="edit-equipment-name"
-                  value={editForm.name}
-                  onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))}
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700" htmlFor="edit-category">
-                  Category
-                </label>
-                <select
-                  id="edit-category"
-                  value={editForm.categoryId}
-                  onChange={(event) =>
-                    setEditForm((current) => ({ ...current, categoryId: event.target.value }))
-                  }
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
-                  required
-                >
-                  <option value="" disabled>
-                    Select category
-                  </option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={String(category.id)}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div
-                className={`space-y-1 overflow-hidden transition-all duration-200 ${
-                  isEditOtherSelected
-                    ? "max-h-24 opacity-100"
-                    : "pointer-events-none max-h-0 opacity-0"
-                }`}
-              >
-                <label className="text-sm font-medium text-slate-700" htmlFor="edit-custom-category">
-                  Specify Category
-                </label>
-                <Input
-                  id="edit-custom-category"
-                  value={editForm.customCategoryName}
-                  onChange={(event) =>
-                    setEditForm((current) => ({
-                      ...current,
-                      customCategoryName: event.target.value,
-                    }))
-                  }
-                  placeholder="e.g. Scanner"
-                  required={isEditOtherSelected}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700" htmlFor="edit-faculty">
-                  Faculty
-                </label>
-                <select
-                  id="edit-faculty"
-                  value={editForm.facultyId}
-                  onChange={(event) => setEditForm((current) => ({ ...current, facultyId: event.target.value }))}
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
-                  required
-                >
-                  <option value="" disabled>
-                    Select faculty
-                  </option>
-                  {activeFaculties.map((faculty) => (
-                    <option key={faculty.id} value={faculty.id}>
-                      {faculty.name} ({faculty.employeeId})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700" htmlFor="edit-equipment-name">
+                Equipment Name
+              </label>
+              <Input
+                id="edit-equipment-name"
+                value={editForm.name}
+                onChange={(event) =>
+                  setEditForm((current) => ({ ...current, name: event.target.value }))
+                }
+                required
+              />
             </div>
 
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700" htmlFor="edit-serial-number">
-                  Serial Number
-                </label>
-                <Input
-                  id="edit-serial-number"
-                  value={editForm.serialNumber}
-                  onChange={(event) =>
-                    setEditForm((current) => ({ ...current, serialNumber: event.target.value }))
-                  }
-                  required
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700" htmlFor="edit-serial-number">
+                Serial Number
+              </label>
+              <Input
+                id="edit-serial-number"
+                value={editForm.serialNumber}
+                onChange={(event) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    serialNumber: event.target.value,
+                  }))
+                }
+                required
+              />
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700" htmlFor="edit-status">
-                  Status
-                </label>
-                <select
-                  id="edit-status"
-                  value={editForm.status}
-                  onChange={(event) =>
-                    setEditForm((current) => ({
-                      ...current,
-                      status: event.target.value as EquipmentStatus,
-                    }))
-                  }
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
-                  required
-                >
-                  {REQUIRED_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {formatStatusLabel(status)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700" htmlFor="edit-category">
+                Category
+              </label>
+              <select
+                id="edit-category"
+                value={editForm.categoryId}
+                onChange={(event) =>
+                  setEditForm((current) => ({ ...current, categoryId: event.target.value }))
+                }
+                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
+                required
+              >
+                <option value="" disabled>
+                  Select category
+                </option>
+                {categories.map((category) => (
+                  <option key={category.id} value={String(category.id)}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700" htmlFor="edit-room">
-                  Room
-                </label>
-                <select
-                  id="edit-room"
-                  value={editForm.roomId}
-                  onChange={(event) => setEditForm((current) => ({ ...current, roomId: event.target.value }))}
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
-                >
-                  <option value="">Unassigned</option>
-                  {rooms.map((room: RoomRecord) => (
-                    <option key={room.id} value={String(room.id)}>
-                      {room.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700" htmlFor="edit-status">
+                Status
+              </label>
+              <select
+                id="edit-status"
+                value={editForm.status}
+                onChange={(event) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    status: event.target.value as EquipmentStatus,
+                  }))
+                }
+                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
+                required
+              >
+                {REQUIRED_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {formatStatusLabel(status)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div
+              className={`space-y-1 overflow-hidden transition-all duration-200 md:col-span-2 ${
+                isEditOtherSelected
+                  ? "max-h-24 opacity-100"
+                  : "pointer-events-none max-h-0 opacity-0"
+              }`}
+            >
+              <label className="text-sm font-medium text-slate-700" htmlFor="edit-custom-category">
+                Specify Category
+              </label>
+              <Input
+                id="edit-custom-category"
+                value={editForm.customCategoryName}
+                onChange={(event) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    customCategoryName: event.target.value,
+                  }))
+                }
+                placeholder="e.g. Scanner"
+                required={isEditOtherSelected}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700" htmlFor="edit-faculty">
+                Faculty
+              </label>
+              <select
+                id="edit-faculty"
+                value={editForm.facultyId}
+                onChange={(event) =>
+                  setEditForm((current) => ({ ...current, facultyId: event.target.value }))
+                }
+                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
+                required
+              >
+                <option value="" disabled>
+                  Select faculty
+                </option>
+                {activeFaculties.map((faculty) => (
+                  <option key={faculty.id} value={faculty.id}>
+                    {faculty.name} ({faculty.employeeId})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700" htmlFor="edit-room">
+                Room
+              </label>
+              <select
+                id="edit-room"
+                value={editForm.roomId}
+                onChange={(event) =>
+                  setEditForm((current) => ({ ...current, roomId: event.target.value }))
+                }
+                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-sans"
+              >
+                <option value="">Unassigned</option>
+                {rooms.map((room: RoomRecord) => (
+                  <option key={room.id} value={String(room.id)}>
+                    {room.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {editError && (
@@ -942,21 +960,48 @@ export default function EquipmentPage() {
               </p>
             )}
 
-            <DialogFooter className="md:col-span-2">
-              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
-                Cancel
-              </Button>
+            <DialogFooter className="md:col-span-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <Button
-                type="submit"
-                disabled={!hasEditChanges || updateMutation.isPending}
-                className="disabled:cursor-not-allowed disabled:opacity-50"
+                type="button"
+                variant="outline"
+                className="gap-2"
+                disabled={!selectedEquipment || !canScheduleSelectedEquipment}
+                onClick={() => setScheduleFromEditOpen(true)}
               >
-                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                <WrenchIcon className="size-4" />
+                Schedule Maintenance
               </Button>
+
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!hasEditChanges || updateMutation.isPending}
+                  className="disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <ScheduleMaintenanceDialog
+        open={scheduleFromEditOpen}
+        onOpenChange={setScheduleFromEditOpen}
+        preselectedEquipment={selectedEquipment}
+        lockEquipment
+        title="Schedule Maintenance"
+        description="Create a maintenance task for this equipment."
+        onScheduled={() => {
+          setScheduleFromEditOpen(false)
+          setEditOpen(false)
+          setSelectedEquipment(null)
+        }}
+      />
 
       <EquipmentTimelineDialog
         open={timelineEquipment !== null}

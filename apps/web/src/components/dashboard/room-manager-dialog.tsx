@@ -2,7 +2,7 @@
 
 import { FormEvent, ReactElement, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { PencilIcon } from "lucide-react"
+import { AlertTriangleIcon, PencilIcon, Trash2Icon } from "lucide-react"
 import { EmptyState } from "@/components/dashboard/empty-state"
 import { ActionIcon } from "@/components/ui/action-icon"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { createRoom, getRooms, updateRoom } from "@/lib/api/rooms"
+import { getEquipmentList } from "@/lib/api/equipment"
+import { createRoom, deleteRoom, getRooms, updateRoom } from "@/lib/api/rooms"
+import type { EquipmentRecord } from "@/types/equipment"
 import type { CreateRoomInput, RoomRecord, UpdateRoomInput } from "@/types/room"
 
 type RoomManagerDialogProps = {
@@ -49,6 +51,8 @@ export function RoomManagerDialog({ trigger }: RoomManagerDialogProps) {
   const [editForm, setEditForm] = useState<RoomFormState>(defaultForm)
   const [initialEditValues, setInitialEditValues] = useState<RoomFormState>(defaultForm)
   const [editError, setEditError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<RoomRecord | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
   const roomsQuery = useQuery({
@@ -58,6 +62,14 @@ export function RoomManagerDialog({ trigger }: RoomManagerDialogProps) {
   })
 
   const rooms = roomsQuery.data ?? []
+
+  const equipmentQuery = useQuery({
+    queryKey: ["equipment", "rooms-usage"],
+    queryFn: () => getEquipmentList(),
+    enabled: open,
+  })
+
+  const equipments = equipmentQuery.data ?? []
 
   const createMutation = useMutation({
     mutationFn: createRoom,
@@ -88,6 +100,9 @@ export function RoomManagerDialog({ trigger }: RoomManagerDialogProps) {
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: ["rooms"] })
+      await queryClient.invalidateQueries({ queryKey: ["equipment"] })
+      await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
     },
   })
 
@@ -129,12 +144,77 @@ export function RoomManagerDialog({ trigger }: RoomManagerDialogProps) {
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: ["rooms"] })
+      await queryClient.invalidateQueries({ queryKey: ["equipment"] })
+      await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteRoom,
+    onMutate: async (roomId): Promise<CreateRoomContext> => {
+      await queryClient.cancelQueries({ queryKey: ["rooms"] })
+      const previousRooms = queryClient.getQueryData<RoomRecord[]>(["rooms"]) ?? []
+
+      queryClient.setQueryData<RoomRecord[]>(
+        ["rooms"],
+        previousRooms.filter((room) => room.id !== roomId),
+      )
+
+      return { previousRooms }
+    },
+    onError: (error, _payload, context) => {
+      if (context?.previousRooms) {
+        queryClient.setQueryData(["rooms"], context.previousRooms)
+      }
+
+      setDeleteError(
+        error instanceof Error ? error.message : "Unable to delete room",
+      )
+    },
+    onSuccess: async () => {
+      setDeleteError(null)
+      setDeleteTarget(null)
+      await queryClient.invalidateQueries({ queryKey: ["rooms"] })
+      await queryClient.invalidateQueries({ queryKey: ["equipment"] })
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["rooms"] })
+      await queryClient.invalidateQueries({ queryKey: ["equipment"] })
+      await queryClient.invalidateQueries({ queryKey: ["equipmentStats"] })
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "analytics"] })
     },
   })
 
   const sortedRooms = useMemo(() => {
     return [...rooms].sort((first, second) => first.id - second.id)
   }, [rooms])
+
+  const assignedEquipmentByRoom = useMemo(() => {
+    const mapping = new Map<number, EquipmentRecord[]>()
+
+    for (const equipment of equipments) {
+      const roomId = equipment.currentRoom?.id
+
+      if (!roomId) {
+        continue
+      }
+
+      const existing = mapping.get(roomId) ?? []
+      existing.push(equipment)
+      mapping.set(roomId, existing)
+    }
+
+    return mapping
+  }, [equipments])
+
+  const equipmentUsingDeleteTarget = useMemo(() => {
+    if (!deleteTarget) {
+      return []
+    }
+
+    return assignedEquipmentByRoom.get(deleteTarget.id) ?? []
+  }, [assignedEquipmentByRoom, deleteTarget])
 
   const normalizedEditValues = useMemo(
     () => ({
@@ -233,6 +313,8 @@ export function RoomManagerDialog({ trigger }: RoomManagerDialogProps) {
         if (!nextOpen) {
           setForm(defaultForm)
           setLocalError(null)
+          setDeleteTarget(null)
+          setDeleteError(null)
         }
       }}
     >
@@ -354,6 +436,15 @@ export function RoomManagerDialog({ trigger }: RoomManagerDialogProps) {
                           label={`Edit room ${room.name}`}
                           onClick={() => openEditDialog(room)}
                         />
+                        <ActionIcon
+                          icon={Trash2Icon}
+                          label={`Delete room ${room.name}`}
+                          className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                          onClick={() => {
+                            setDeleteError(null)
+                            setDeleteTarget(room)
+                          }}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -363,6 +454,92 @@ export function RoomManagerDialog({ trigger }: RoomManagerDialogProps) {
           </div>
         )}
       </DialogContent>
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setDeleteTarget(null)
+            setDeleteError(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Room</DialogTitle>
+            <DialogDescription>
+              {deleteTarget
+                ? `Delete ${deleteTarget.name} from the room list.`
+                : "Delete room"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteTarget && equipmentUsingDeleteTarget.length > 0 && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+              <div className="mb-2 flex items-start gap-2">
+                <AlertTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>
+                  This room is currently assigned to{" "}
+                  {equipmentUsingDeleteTarget.length} equipment record
+                  {equipmentUsingDeleteTarget.length > 1 ? "s" : ""}. Reassign them
+                  first before deleting this room.
+                </p>
+              </div>
+              <ul className="list-disc space-y-1 pl-6">
+                {equipmentUsingDeleteTarget.slice(0, 3).map((equipment) => (
+                  <li key={equipment.id}>
+                    {equipment.name} ({equipment.serialNumber})
+                  </li>
+                ))}
+                {equipmentUsingDeleteTarget.length > 3 && (
+                  <li>and {equipmentUsingDeleteTarget.length - 3} more</li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {deleteTarget && equipmentQuery.isLoading && (
+            <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              Checking room assignments...
+            </p>
+          )}
+
+          {deleteError && (
+            <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {deleteError}
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={
+                !deleteTarget ||
+                deleteMutation.isPending ||
+                equipmentQuery.isLoading ||
+                equipmentUsingDeleteTarget.length > 0
+              }
+              onClick={async () => {
+                if (!deleteTarget) {
+                  return
+                }
+
+                try {
+                  await deleteMutation.mutateAsync(deleteTarget.id)
+                } catch {
+                  // handled in mutation callbacks
+                }
+              }}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Room"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={editOpen}
@@ -451,3 +628,4 @@ export function RoomManagerDialog({ trigger }: RoomManagerDialogProps) {
     </Dialog>
   )
 }
+
