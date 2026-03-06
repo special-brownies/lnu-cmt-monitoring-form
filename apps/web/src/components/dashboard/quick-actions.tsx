@@ -1,7 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { Building2Icon, KeyRoundIcon, PlusCircleIcon, ShieldUserIcon, WrenchIcon } from "lucide-react"
+import {
+  Building2Icon,
+  KeyRoundIcon,
+  PencilRulerIcon,
+  PlusCircleIcon,
+  ShieldUserIcon,
+  WrenchIcon,
+} from "lucide-react"
+import { CategoryManagerDialog } from "@/components/dashboard/category-manager-dialog"
 import { ScheduleMaintenanceDialog } from "@/components/maintenance/schedule-maintenance-dialog"
 import { PasswordRequestsDialog } from "@/components/dashboard/password-requests-dialog"
 import { RoomManagerDialog } from "@/components/dashboard/room-manager-dialog"
@@ -47,6 +55,20 @@ export function QuickActions({ isAdmin, onNavigateDeveloping }: QuickActionsProp
                 >
                   <Building2Icon className="size-4" />
                   Add Room
+                </Button>
+              }
+            />
+          )}
+
+          {isAdmin && (
+            <CategoryManagerDialog
+              trigger={
+                <Button
+                  variant="outline"
+                  className="h-auto justify-start gap-2 py-3 transition-colors hover:bg-slate-100"
+                >
+                  <PencilRulerIcon className="size-4" />
+                  Edit Categories
                 </Button>
               }
             />

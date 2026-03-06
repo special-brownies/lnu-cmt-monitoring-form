@@ -77,9 +77,16 @@ export type CategoryRecord = {
   id: number
   name: string
   description?: string | null
+  createdAt: string
 }
 
 export type CreateCategoryInput = {
+  name: string
+  description?: string
+}
+
+export type UpdateCategoryInput = {
+  id: number
   name: string
   description?: string
 }

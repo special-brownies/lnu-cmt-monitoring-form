@@ -15,8 +15,16 @@ export class CategoryService {
   private static readonly OTHER_CATEGORY_NAME = 'Other'
 
   async create(dto: CreateCategoryDto) {
+    const name = this.normalizeCategoryName(dto.name)
+    await this.ensureNameIsUnique(name)
+
     try {
-      return await this.prisma.category.create({ data: dto })
+      return await this.prisma.category.create({
+        data: {
+          name,
+          description: this.normalizeDescription(dto.description),
+        },
+      })
     } catch (error: unknown) {
       this.handlePrismaError(error, 'category')
     }
@@ -32,12 +40,31 @@ export class CategoryService {
   }
 
   async update(id: number, dto: UpdateCategoryDto) {
-    await this.ensureExists(id)
+    const existingCategory = await this.ensureExists(id)
+
+    const nextName =
+      dto.name !== undefined
+        ? this.normalizeCategoryName(dto.name)
+        : existingCategory.name
+
+    if (dto.name !== undefined) {
+      await this.ensureNameIsUnique(nextName, id)
+    }
+
+    const data: Prisma.CategoryUpdateInput = {}
+
+    if (dto.name !== undefined) {
+      data.name = nextName
+    }
+
+    if (dto.description !== undefined) {
+      data.description = this.normalizeDescription(dto.description)
+    }
 
     try {
       return await this.prisma.category.update({
         where: { id },
-        data: dto,
+        data,
       })
     } catch (error: unknown) {
       this.handlePrismaError(error, 'category')
@@ -46,6 +73,15 @@ export class CategoryService {
 
   async remove(id: number) {
     await this.ensureExists(id)
+    const equipmentCount = await this.prisma.equipment.count({
+      where: { categoryId: id },
+    })
+
+    if (equipmentCount > 0) {
+      throw new BadRequestException(
+        'Cannot delete this category because it is currently used by equipment',
+      )
+    }
 
     try {
       return await this.prisma.category.delete({ where: { id } })
@@ -86,6 +122,37 @@ export class CategoryService {
       },
       select: { id: true },
     })
+  }
+
+  private normalizeCategoryName(rawName: string) {
+    const name = rawName.trim()
+
+    if (name.length < 2) {
+      throw new BadRequestException(
+        'Category name must be at least 2 non-space characters',
+      )
+    }
+
+    return name
+  }
+
+  private normalizeDescription(rawDescription?: string | null) {
+    const description = rawDescription?.trim()
+    return description && description.length > 0 ? description : null
+  }
+
+  private async ensureNameIsUnique(name: string, excludeId?: number) {
+    const existingCategory = await this.prisma.category.findFirst({
+      where: {
+        name: { equals: name, mode: 'insensitive' },
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { id: true },
+    })
+
+    if (existingCategory) {
+      throw new BadRequestException('A category with this name already exists')
+    }
   }
 
   private handlePrismaError(error: unknown, entity: string): never {
