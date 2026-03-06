@@ -20,13 +20,14 @@ export class ApiError extends Error {
 }
 
 function getApiBaseUrl() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '')
-
-  if (!baseUrl) {
-    throw new Error('Missing NEXT_PUBLIC_API_URL')
+  if (typeof window === 'undefined') {
+    return (
+      process.env.INTERNAL_API_URL?.replace(/\/$/, '') ??
+      'http://lnu_api:3000'
+    )
   }
 
-  return baseUrl
+  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || '/api'
 }
 
 function getAuthToken() {

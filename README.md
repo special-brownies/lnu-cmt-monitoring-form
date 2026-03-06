@@ -1,27 +1,46 @@
 # LNU CMT Monitoring System
 
 ## Project Description
-LNU CMT Monitoring System is a web-based properties and asset monitoring system for the LNU CMT Office. It provides role-based authentication (`SUPER_ADMIN` and `USER`), equipment and user management, password request handling, timeline tracking for equipment status/location changes, and responsive management tools with sorting, filtering, and polished animations. The project is built with a Docker-first development workflow for consistent local setup.
+LNU CMT Monitoring System is a web-based properties and equipment monitoring platform for the LNU CMT Office.
 
-## Latest Features
-- Role-based user creation flow with Admin/User selection.
-- User role filter in User Management.
-- Equipment Management with predefined categories and structured `Other` support.
-- Equipment timeline tracking for status and location history changes.
-- Global sort options across key screens: `A-Z`, `Newest`, `Oldest`.
-- Icon-based action buttons for management tables.
-- Global animation system (loading, tabs, dropdowns, modals, transitions, hovers).
-- Improved UI/UX stability across toolbar and table layouts.
-- Navbar collapse behavior improvements for better responsive navigation.
+The system supports:
+- Equipment tracking and assignment
+- Maintenance scheduling and user maintenance requests
+- Role-based access control (`SUPER_ADMIN`, `USER`)
+- Analytics dashboard and operational metrics
+- Equipment timeline tracking (status/location/maintenance events)
+- User profile and profile picture management
+- Session timeout and browser-session auth validation
+
+## Feature List
+
+### Admin Features
+- Equipment Management (create, edit, delete, filter, sort)
+- Category Management (create, edit, delete with usage checks)
+- Room Management
+- User Management
+- Maintenance Scheduling and completion
+- Analytics Dashboard
+- Activity Timeline / Recent Activity
+- Dashboard Quick Actions
+- Collapsible, responsive dashboard sidebar
+
+### User Features
+- User Dashboard (role-aware quick actions)
+- Assigned Equipment View only
+- Maintenance Requests (restricted to assigned equipment)
+- Profile Management (via User Management profile view)
+- Profile Picture Upload with crop
+- Session timeout enforcement and startup auth validation
 
 ## Tech Stack
 
 ### Frontend
 - Next.js (App Router)
 - TypeScript
-- TailwindCSS
+- Tailwind CSS
 - shadcn/ui
-- lucide-react
+- Lucide Icons
 
 ### Backend
 - NestJS
@@ -32,126 +51,99 @@ LNU CMT Monitoring System is a web-based properties and asset monitoring system 
 - Docker
 - Docker Compose
 
-## System Architecture
-`Next.js Web (3001)` -> `NestJS API (3000)` -> `PostgreSQL (5432)`
+## Project Structure
+- `apps/api` -> NestJS backend
+- `apps/web` -> Next.js frontend
+- `apps/api/prisma` -> Prisma schema, migrations, seed script
+- `docker-compose.yml` -> container orchestration (`lnu_postgres`, `lnu_api`, `lnu_web`)
 
-Docker services:
-- `web`: Next.js frontend container
-- `api`: NestJS backend container
-- `postgres`: PostgreSQL database container
-- `cli`: utility workspace container
+## How To Run (Docker-First)
 
-## How To Run
+### Prerequisites
+- Docker Desktop (or Docker Engine + Docker Compose)
+- Git
 
-### A) Prerequisites
-- Node.js `20+` (required for local non-Docker runs)
-- npm `10+` (recommended)
-- Docker Desktop or Docker Engine + Docker Compose
-- PostgreSQL `16+` (only for non-Docker database setup)
+### Steps
+1. Clone the repository.
+2. Go to the project root.
+3. Copy `.env.example` to `.env` (optional if defaults are acceptable).
+4. Run:
 
-### B) Environment Setup
-Create environment files before running:
-
-1. API environment (`apps/api/.env`)
-```env
-DATABASE_URL=postgresql://<user>:<password>@<host>:5432/<db_name>?schema=public
-JWT_SECRET=<your_jwt_secret>
-```
-
-2. Web environment (`apps/web/.env`)
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3000
-INTERNAL_API_URL=http://localhost:3000
-```
-
-Notes:
-- `apps/web/.env.example` is available as a reference.
-- Keep secrets out of Git and use local-only values.
-
-### C) Run With Docker (Recommended)
-1. Build and start all services:
 ```bash
 docker compose up --build
 ```
-2. Open services:
+
+The stack will automatically:
+- Start PostgreSQL
+- Build and start API + Web containers
+- Run Prisma migrations
+- Seed initial data only when the database is empty
+
+Optional helper commands:
+
+```bash
+docker compose down
+docker compose down -v
+npm run docker:db:reseed
+```
+
+### Access URLs
 - Frontend: `http://localhost:3001`
 - API: `http://localhost:3000`
-- PostgreSQL: `localhost:5432`
-3. Optional maintenance commands:
-```bash
-docker compose exec api npx prisma migrate deploy
-docker compose exec api npx ts-node prisma/seed.ts
-docker compose exec api npx prisma generate
-```
+- API Health: `http://localhost:3000/health`
 
-### D) Run Without Docker
-1. Start PostgreSQL locally and prepare `apps/api/.env`.
-2. Install dependencies:
-```bash
-cd apps/api && npm install
-cd ../web && npm install
-```
-3. Apply migrations and seed:
-```bash
-cd apps/api
-npx prisma migrate deploy
-npx ts-node prisma/seed.ts
-```
-4. Start API:
-```bash
-cd apps/api
-npm run start:dev
-```
-5. Start Web (new terminal):
-```bash
-cd apps/web
-npm run dev
-```
-6. Open:
-- Frontend: `http://localhost:3000` (Next.js default)
-- API: `http://localhost:3000` (set API port in your local setup if both run on same host/port)
+### Default Seed Credentials
+- Admin: `debug1772286374@lnu.local` / `DebugPass123`
+- Faculty sample: `FAC-1001` / `Faculty123`
 
-## Project Structure
-- `apps/api` -> NestJS backend (modules, auth, Prisma integration)
-- `apps/web` -> Next.js frontend (App Router + UI)
-- `apps/api/prisma` -> Prisma schema, migrations, and seed script
-- `docker-compose.yml` -> local multi-service container orchestration
+## Environment Variables
 
-## Development Principles
-- Docker-first workflow for consistent team environments.
-- Backend-driven UI behavior and validation.
-- Role-aware system design (`SUPER_ADMIN` and `USER`).
-- Production-ready structure with clear module boundaries.
-- Incremental development with safe, testable feature delivery.
+Use root `.env` for Docker Compose overrides.
 
-## Authentication Model
-- `SUPER_ADMIN` account source: `User` table (email + password login)
-- `USER` account source: `Faculty` table (employeeId + password login)
-- Password request flow is resolved by `SUPER_ADMIN` and tracked in request records.
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `POSTGRES_USER` | No | `lnu` | PostgreSQL username |
+| `POSTGRES_PASSWORD` | No | `lnu123` | PostgreSQL password |
+| `POSTGRES_DB` | No | `lnu_assets` | PostgreSQL database name |
+| `POSTGRES_PORT` | No | `5432` | Host port for PostgreSQL |
+| `API_PORT` | No | `3000` | Host port for API |
+| `WEB_PORT` | No | `3001` | Host port for Web |
+| `JWT_SECRET` | Yes (prod) | `replace_with_long_random_secret` | JWT signing secret |
+| `NEXT_PUBLIC_API_URL` | No | `/api` | Browser-facing API URL (proxied by Next.js) |
+| `INTERNAL_API_URL` | No | `http://lnu_api:3000` | Container-internal API URL for Next.js rewrites |
+| `NEXT_PUBLIC_SESSION_TIMEOUT_MS` | No | `1800000` | Session timeout (ms) |
 
-## API Highlights
-Base URL: `http://localhost:3000`
+For API-only local runs, see `apps/api/.env.example`.
 
-- `POST /auth/login/admin`
-- `POST /auth/login/faculty`
-- `POST /password-requests`
-- `GET /password-requests` (`SUPER_ADMIN`)
-- `POST /password-requests/:id/resolve` (`SUPER_ADMIN`)
-- `PATCH /users/:id` (`SUPER_ADMIN`)
-- `DELETE /users/:id` (`SUPER_ADMIN`)
-- `GET /equipment?search=&status=&categoryId=`
-- `POST /equipment` and `PATCH /equipment/:id` support `customCategoryName` when category is `Other`
+## Operational Notes
+- Database safety:
+  - PostgreSQL data persists in Docker volume `postgres_data`.
+  - Startup uses `prisma migrate deploy` (safe, non-destructive).
+  - Seed runs conditionally and is skipped when data already exists.
+  - No automatic `prisma migrate reset` or forced reseed on container start.
+- Frontend/API connectivity:
+  - Browser requests use `/api/*` on the web origin.
+  - Next.js rewrites `/api/*` to `INTERNAL_API_URL` (default `http://lnu_api:3000`) inside Docker.
+- Authentication/session behavior:
+  - Token validation runs on startup and route navigation.
+  - Inactivity timeout is controlled by `NEXT_PUBLIC_SESSION_TIMEOUT_MS` (default `30` minutes).
+  - Browser-session lifecycle checks clear stale auth state when a new browser session is detected.
+- Manual reseed (development only):
+  - Run `npm run docker:db:reseed` while containers are running.
+  - Alternative local command: `npm run db:reseed` from repo root.
+- Navigation behavior:
+  - Sidebar collapse state is persisted.
+  - Sidebar auto-collapses on narrow viewports and keeps animated width transitions.
+- API enforces role and ownership checks (not only frontend UI restrictions).
+- Users can only view assigned equipment and request maintenance for assigned equipment.
+- Admin-only endpoints remain protected by JWT + role guards.
 
-## Default Seed Credentials
-- `SUPER_ADMIN`: `debug1772286374@lnu.local` / `DebugPass123`
-- Sample faculty: `FAC-1001` / `Faculty123`
-
-## Security Notes
-- Passwords are hashed with `bcrypt`.
-- JWT protects secured endpoints.
-- Role checks enforce admin-only operations where required.
-- Password request submission avoids account enumeration.
-- Inactive accounts are blocked during auth checks.
+## Screenshots (Optional)
+Add screenshots here if available:
+- Dashboard
+- Equipment Management
+- Maintenance Page
+- Analytics
 
 ## License
 License to be defined.

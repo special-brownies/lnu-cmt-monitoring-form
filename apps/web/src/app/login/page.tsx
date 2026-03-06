@@ -99,15 +99,7 @@ export default function LoginPage() {
       }
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL
-
-    if (!apiUrl) {
-      setToast({
-        message: 'Missing NEXT_PUBLIC_API_URL',
-        variant: 'destructive',
-      })
-      return
-    }
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || '/api'
 
     const endpoint =
       loginType === 'admin' ? '/auth/login/admin' : '/auth/login/faculty'

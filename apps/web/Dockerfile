@@ -4,10 +4,21 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
 
+ARG NEXT_PUBLIC_API_URL=/api
+ARG INTERNAL_API_URL=http://lnu_api:3000
+ARG NEXT_PUBLIC_SESSION_TIMEOUT_MS=1800000
+
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV INTERNAL_API_URL=${INTERNAL_API_URL}
+ENV NEXT_PUBLIC_SESSION_TIMEOUT_MS=${NEXT_PUBLIC_SESSION_TIMEOUT_MS}
+ENV NODE_ENV=production
+
+RUN npm run build
+
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start"]

@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { FormEvent, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { notifyError } from '@/lib/activity-toast'
 import { submitPasswordRequest } from '@/lib/api/password-requests'
 
 export default function ForgotPasswordPage() {
@@ -16,13 +15,7 @@ export default function ForgotPasswordPage() {
     event.preventDefault()
     setMessage(null)
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL
-
-    if (!apiUrl) {
-      setMessage('Missing NEXT_PUBLIC_API_URL')
-      notifyError('Missing NEXT_PUBLIC_API_URL')
-      return
-    }
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || '/api'
 
     setLoading(true)
 

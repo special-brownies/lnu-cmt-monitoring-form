@@ -1,0 +1,21 @@
+{
+  "name": "lnu-cmt-monitoring-system",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:down:volumes": "docker compose down -v",
+    "docker:logs": "docker compose logs -f",
+    "docker:db:reseed": "docker compose exec api npm run db:reseed",
+    "db:reseed": "npm run db:reseed --workspace api",
+    "build": "npm run build --workspace api && npm run build --workspace web",
+    "lint": "npm run lint --workspace web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

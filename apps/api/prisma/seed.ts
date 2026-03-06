@@ -65,7 +65,33 @@ const equipmentStatuses = [
   'Available',
 ] as const
 
+async function isDatabaseEmpty() {
+  const [users, equipment, categories, rooms] = await Promise.all([
+    prisma.user.count(),
+    prisma.equipment.count(),
+    prisma.category.count(),
+    prisma.room.count(),
+  ])
+
+  const hasExistingRecords =
+    users > 0 || equipment > 0 || categories > 0 || rooms > 0
+
+  if (hasExistingRecords) {
+    console.log(
+      'Seed skipped: existing data detected',
+      JSON.stringify({ users, equipment, categories, rooms }),
+    )
+  }
+
+  return !hasExistingRecords
+}
+
 async function main() {
+  const emptyDatabase = await isDatabaseEmpty()
+  if (!emptyDatabase) {
+    return
+  }
+
   const adminPasswordHash = await bcrypt.hash(BACKUP_ADMIN_PASSWORD, 10)
   const facultyPasswordHash = await bcrypt.hash(FACULTY_DEFAULT_PASSWORD, 10)
 
@@ -141,6 +167,7 @@ async function main() {
     Laptop: ['Lenovo ThinkPad T14', 'HP ProBook 450', 'Dell Latitude 5430'],
     Printer: ['Epson L3250', 'Brother HL-L2370DW', 'Canon PIXMA G3010'],
     'Network Device': ['Cisco CBS250 Switch', 'MikroTik hAP ac2', 'TP-Link Omada EAP610'],
+    Other: ['AverMedia Capture Card', 'Logitech PTZ Camera', 'Dell Docking Station'],
   }
 
   const categoryNames = categorySeeds.map((category) => category.name)

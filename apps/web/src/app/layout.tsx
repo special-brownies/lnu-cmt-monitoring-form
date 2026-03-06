@@ -13,6 +13,15 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: 'LNU CMT Monitoring System',
   description: 'LNU CMT Monitoring System frontend',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+      { url: '/assets/lnu-logo.png', type: 'image/png' },
+    ],
+    shortcut: ['/favicon.ico'],
+    apple: [{ url: '/icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 }
 
 export default function RootLayout({

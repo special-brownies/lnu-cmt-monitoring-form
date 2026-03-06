@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { ReactNode, useMemo, useState, useSyncExternalStore } from "react"
+import { ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import {
   BarChart3Icon,
   BoxesIcon,
@@ -55,6 +55,8 @@ const navItems: NavItem[] = [
   { href: "/equipment", label: "Equipment", icon: BoxesIcon },
   { href: "/maintenance", label: "Maintenance", icon: Settings2Icon },
 ]
+const SIDEBAR_COLLAPSED_KEY = "dashboard_sidebar_collapsed"
+const SIDEBAR_AUTO_COLLAPSE_BREAKPOINT = 1100
 
 const pageMetadata: Record<
   string,
@@ -105,6 +107,7 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
   const { data: currentUser } = useCurrentUser()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapseReady, setCollapseReady] = useState(false)
   const hydrated = useSyncExternalStore(
     subscribeShellHydration,
     getShellHydrationSnapshot,
@@ -164,6 +167,64 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
 
     return navItems.filter((item) => !item.adminOnly)
   }, [currentRole])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const storedValue = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+
+    if (storedValue === "true" || storedValue === "false") {
+      setCollapsed(storedValue === "true")
+      setCollapseReady(true)
+      return
+    }
+
+    setCollapsed(window.innerWidth < SIDEBAR_AUTO_COLLAPSE_BREAKPOINT)
+    setCollapseReady(true)
+  }, [])
+
+  useEffect(() => {
+    if (!collapseReady || typeof window === "undefined") {
+      return
+    }
+
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed))
+  }, [collapseReady, collapsed])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const handleResize = () => {
+      if (window.innerWidth < SIDEBAR_AUTO_COLLAPSE_BREAKPOINT) {
+        setCollapsed(true)
+      }
+    }
+
+    handleResize()
+    window.addEventListener("resize", handleResize)
+
+    return () => {
+      window.removeEventListener("resize", handleResize)
+    }
+  }, [])
+
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    if (window.innerWidth < SIDEBAR_AUTO_COLLAPSE_BREAKPOINT) {
+      setCollapsed(true)
+    }
+  }, [pathname])
 
   const currentPage = useMemo(() => {
     if (pathname === "/users" && currentRole === "USER") {

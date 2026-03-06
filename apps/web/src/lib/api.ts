@@ -6,14 +6,12 @@ type ApiFetchOptions = RequestInit & {
 
 const API_URL =
   typeof window === 'undefined'
-    ? process.env.INTERNAL_API_URL?.replace(/\/$/, '')
-    : process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '')
+    ? process.env.INTERNAL_API_URL?.replace(/\/$/, '') ?? 'http://lnu_api:3000'
+    : process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || '/api'
 
 if (!API_URL) {
   console.error('Missing API URL configuration')
 }
-
-console.log('Using API URL:', API_URL)
 
 export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) {
   if (!API_URL) {

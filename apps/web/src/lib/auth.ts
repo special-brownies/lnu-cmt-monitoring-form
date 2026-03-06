@@ -3,6 +3,15 @@ const LEGACY_TOKEN_KEY = 'token'
 const TOKEN_COOKIE_KEY = 'access_token'
 const LAST_ACTIVITY_KEY = 'auth_last_activity'
 const DEFAULT_SESSION_TIMEOUT_MS = 30 * 60 * 1000
+const SESSION_MARKER_KEY = 'auth_browser_session'
+const ACTIVE_TABS_KEY = 'auth_active_tabs'
+const TAB_ID_KEY = 'auth_tab_id'
+const ACTIVE_TAB_HEARTBEAT_MS = 10_000
+const ACTIVE_TAB_STALE_MS = 30_000
+
+let lifecycleInitialized = false
+let activeTabId: string | null = null
+let heartbeatHandle: number | null = null
 
 export type AuthRole = 'SUPER_ADMIN' | 'USER'
 
@@ -20,6 +29,8 @@ export function getToken(): string | null {
   if (typeof window === 'undefined') {
     return null
   }
+
+  ensureLifecycleInitialized()
 
   const storedToken =
     localStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(LEGACY_TOKEN_KEY)
@@ -70,6 +81,7 @@ export function setToken(token: string): void {
     return
   }
 
+  ensureLifecycleInitialized()
   localStorage.setItem(TOKEN_KEY, token)
   localStorage.setItem(LEGACY_TOKEN_KEY, token)
   setTokenCookie(token)
@@ -190,4 +202,135 @@ function clearStoredToken(): void {
 
 function clearSessionActivity(): void {
   localStorage.removeItem(LAST_ACTIVITY_KEY)
+}
+
+function ensureLifecycleInitialized(): void {
+  if (typeof window === 'undefined' || lifecycleInitialized) {
+    return
+  }
+
+  lifecycleInitialized = true
+  activeTabId = getOrCreateTabId()
+
+  const now = Date.now()
+  const activeTabs = pruneStaleTabs(readActiveTabs(), now)
+  const hasSessionMarker = sessionStorage.getItem(SESSION_MARKER_KEY) === '1'
+  const hasOtherActiveTabs = Object.keys(activeTabs).some((tabId) => tabId !== activeTabId)
+
+  if (!hasSessionMarker && !hasOtherActiveTabs) {
+    clearStoredToken()
+    clearSessionActivity()
+    clearTokenCookie()
+  }
+
+  sessionStorage.setItem(SESSION_MARKER_KEY, '1')
+  touchActiveTab(now)
+
+  heartbeatHandle = window.setInterval(() => {
+    touchActiveTab()
+  }, ACTIVE_TAB_HEARTBEAT_MS)
+
+  const unregisterTab = () => {
+    if (!activeTabId) {
+      return
+    }
+
+    const tabs = readActiveTabs()
+
+    if (tabs[activeTabId]) {
+      delete tabs[activeTabId]
+      writeActiveTabs(tabs)
+    }
+
+    if (heartbeatHandle !== null) {
+      window.clearInterval(heartbeatHandle)
+      heartbeatHandle = null
+    }
+  }
+
+  window.addEventListener('beforeunload', unregisterTab)
+  window.addEventListener('pagehide', unregisterTab)
+}
+
+function touchActiveTab(timestamp: number = Date.now()): void {
+  if (!activeTabId) {
+    return
+  }
+
+  const tabs = pruneStaleTabs(readActiveTabs(), timestamp)
+  tabs[activeTabId] = timestamp
+  writeActiveTabs(tabs)
+}
+
+function getOrCreateTabId(): string {
+  const existing = sessionStorage.getItem(TAB_ID_KEY)
+
+  if (existing) {
+    return existing
+  }
+
+  const generated =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `tab_${Date.now()}_${Math.random().toString(36).slice(2)}`
+
+  sessionStorage.setItem(TAB_ID_KEY, generated)
+  return generated
+}
+
+function readActiveTabs(): Record<string, number> {
+  try {
+    const rawValue = localStorage.getItem(ACTIVE_TABS_KEY)
+
+    if (!rawValue) {
+      return {}
+    }
+
+    const parsed = JSON.parse(rawValue) as Record<string, unknown>
+    const result: Record<string, number> = {}
+
+    for (const [tabId, timestamp] of Object.entries(parsed)) {
+      const numericTimestamp = Number(timestamp)
+
+      if (!Number.isFinite(numericTimestamp) || numericTimestamp <= 0) {
+        continue
+      }
+
+      result[tabId] = numericTimestamp
+    }
+
+    return result
+  } catch {
+    return {}
+  }
+}
+
+function writeActiveTabs(value: Record<string, number>): void {
+  try {
+    if (Object.keys(value).length === 0) {
+      localStorage.removeItem(ACTIVE_TABS_KEY)
+      return
+    }
+
+    localStorage.setItem(ACTIVE_TABS_KEY, JSON.stringify(value))
+  } catch {
+    // Ignore storage write failures and continue.
+  }
+}
+
+function pruneStaleTabs(
+  value: Record<string, number>,
+  now: number,
+): Record<string, number> {
+  const result: Record<string, number> = {}
+
+  for (const [tabId, timestamp] of Object.entries(value)) {
+    if (now - timestamp > ACTIVE_TAB_STALE_MS) {
+      continue
+    }
+
+    result[tabId] = timestamp
+  }
+
+  return result
 }

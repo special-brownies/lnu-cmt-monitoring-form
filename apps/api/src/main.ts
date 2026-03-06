@@ -7,6 +7,7 @@ import { AppModule } from './app.module'
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule)
+  const port = Number(process.env.API_PORT ?? process.env.PORT ?? 3000)
   const uploadsPath = join(process.cwd(), 'uploads')
 
   if (!existsSync(uploadsPath)) {
@@ -33,7 +34,7 @@ async function bootstrap() {
     credentials: true,
   })
 
-  await app.listen(3000, '0.0.0.0')
+  await app.listen(Number.isFinite(port) ? port : 3000, '0.0.0.0')
 }
 
 bootstrap()
