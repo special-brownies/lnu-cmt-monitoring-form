@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
+import { Prisma, Role } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { CreateEquipmentDto } from './dto/create-equipment.dto'
 import { UpdateEquipmentDto } from './dto/update-equipment.dto'
@@ -32,6 +32,11 @@ type EquipmentQueryFilters = {
   search?: string
   status?: string
   categoryId?: number
+}
+
+type EquipmentActor = {
+  id: string
+  role: Role
 }
 
 type TimelineRange = 'all' | '24h' | '7d' | '30d'
@@ -145,11 +150,17 @@ export class EquipmentService {
     }
   }
 
-  async findAll(filters: EquipmentQueryFilters = {}) {
+  async findAll(filters: EquipmentQueryFilters = {}, actor?: EquipmentActor) {
     const normalizedSearch = filters.search?.trim().toLowerCase() ?? ''
     const normalizedStatus = filters.status?.trim().toUpperCase() ?? ''
+    const where: Prisma.EquipmentWhereInput = {}
+
+    if (actor?.role === Role.USER) {
+      where.facultyId = actor.id
+    }
 
     const equipments = await this.prisma.equipment.findMany({
+      where,
       include: equipmentInclude,
       orderBy: { id: 'asc' },
     })
@@ -177,9 +188,12 @@ export class EquipmentService {
       })
   }
 
-  async findOne(id: number) {
-    const equipment = await this.prisma.equipment.findUnique({
-      where: { id },
+  async findOne(id: number, actor?: EquipmentActor) {
+    const equipment = await this.prisma.equipment.findFirst({
+      where: {
+        id,
+        ...(actor?.role === Role.USER ? { facultyId: actor.id } : {}),
+      },
       include: equipmentInclude,
     })
 
@@ -262,12 +276,16 @@ export class EquipmentService {
   async findTimeline(
     id: number,
     rangeInput?: string,
+    actor?: EquipmentActor,
   ): Promise<EquipmentTimelineEvent[]> {
     const range = normalizeTimelineRange(rangeInput)
     const cutoff = getTimelineCutoff(range)
 
-    const equipment = await this.prisma.equipment.findUnique({
-      where: { id },
+    const equipment = await this.prisma.equipment.findFirst({
+      where: {
+        id,
+        ...(actor?.role === Role.USER ? { facultyId: actor.id } : {}),
+      },
       select: {
         id: true,
         name: true,

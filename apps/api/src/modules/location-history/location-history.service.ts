@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
+import { Prisma, Role } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { EquipmentService } from '../equipment/equipment.service'
 import { RoomService } from '../room/room.service'
@@ -55,8 +55,11 @@ export class LocationHistoryService {
     }
   }
 
-  async findByEquipment(equipmentId: number) {
-    await this.equipmentService.ensureExists(equipmentId)
+  async findByEquipment(
+    equipmentId: number,
+    actor?: { id: string; role: Role },
+  ) {
+    await this.equipmentService.findOne(equipmentId, actor)
 
     return this.prisma.equipmentLocationHistory.findMany({
       where: { equipmentId },

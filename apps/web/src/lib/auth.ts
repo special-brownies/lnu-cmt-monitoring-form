@@ -12,6 +12,7 @@ type AuthPayload = {
   email?: string
   employeeId?: string
   name?: string
+  profileImagePath?: string
   exp?: number
 }
 

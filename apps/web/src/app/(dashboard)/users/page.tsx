@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SortSelect } from "@/components/ui/sort-select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
+import { ProfileSettingsPanel } from "@/components/profile/profile-settings-panel"
 import { CreateUserDialog } from "@/components/user-management/create-user-dialog"
 import { DeleteAdminDialog } from "@/components/user-management/delete-admin-dialog"
 import { DeleteUserDialog } from "@/components/user-management/delete-user-dialog"
@@ -118,6 +120,53 @@ function toAdminRow(admin: SuperAdminRecord): UserManagementRow {
 }
 
 export default function UsersPage() {
+  const {
+    data: currentUser,
+    isLoading: isCurrentUserLoading,
+    isError: isCurrentUserError,
+  } = useCurrentUser()
+
+  if (isCurrentUserLoading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="h-12 w-full" />
+        ))}
+      </div>
+    )
+  }
+
+  if (isCurrentUserError || !currentUser) {
+    return (
+      <Card className="border-rose-200">
+        <CardHeader>
+          <CardTitle className="text-rose-700">Unable to load user profile</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-rose-700">
+          There was a problem loading your account details.
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (currentUser.role === "USER") {
+    return (
+      <ProfileSettingsPanel
+        title="My Profile"
+        subtitle="Update your profile details and profile picture."
+        widerLayout
+      />
+    )
+  }
+
+  return <AdminUsersManagementContent currentUserId={currentUser.id} />
+}
+
+type AdminUsersManagementContentProps = {
+  currentUserId: string
+}
+
+function AdminUsersManagementContent({ currentUserId }: AdminUsersManagementContentProps) {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL")
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL")
@@ -316,8 +365,13 @@ export default function UsersPage() {
         cell: ({ row }) => {
           const faculty = row.original.faculty
           const admin = row.original.admin
+          const isCurrentUserRow = currentUserId === row.original.id
 
           if (admin) {
+            if (isCurrentUserRow) {
+              return null
+            }
+
             const adminStatus = getAdminStatus(admin)
 
             return (
@@ -349,14 +403,16 @@ export default function UsersPage() {
 
           return (
             <div className="flex items-center gap-2 whitespace-nowrap">
-              <EditUserDialog
-                faculty={faculty}
-                status={status}
-                isSubmitting={updateMutation.isPending}
-                onUpdate={async (input: UpdateFacultyInput) => {
-                  await updateMutation.mutateAsync(input)
-                }}
-              />
+              {!isCurrentUserRow && (
+                <EditUserDialog
+                  faculty={faculty}
+                  status={status}
+                  isSubmitting={updateMutation.isPending}
+                  onUpdate={async (input: UpdateFacultyInput) => {
+                    await updateMutation.mutateAsync(input)
+                  }}
+                />
+              )}
               <ResetPasswordDialog
                 faculty={faculty}
                 isSubmitting={resetMutation.isPending}
@@ -364,13 +420,15 @@ export default function UsersPage() {
                   await resetMutation.mutateAsync({ id, password })
                 }}
               />
-              <DeleteUserDialog
-                faculty={faculty}
-                isSubmitting={deleteMutation.isPending}
-                onDelete={async (id) => {
-                  await deleteMutation.mutateAsync(id)
-                }}
-              />
+              {!isCurrentUserRow && (
+                <DeleteUserDialog
+                  faculty={faculty}
+                  isSubmitting={deleteMutation.isPending}
+                  onDelete={async (id) => {
+                    await deleteMutation.mutateAsync(id)
+                  }}
+                />
+              )}
             </div>
           )
         },
@@ -380,6 +438,7 @@ export default function UsersPage() {
       deleteAdminMutation,
       deleteMutation,
       resetMutation,
+      currentUserId,
       updateAdminMutation,
       updateMutation,
     ],

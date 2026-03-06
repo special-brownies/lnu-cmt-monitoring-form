@@ -10,6 +10,7 @@ import {
   ChevronDownIcon,
   LayoutDashboardIcon,
   LogOutIcon,
+  SettingsIcon,
   Settings2Icon,
   MenuIcon,
   UsersRoundIcon,
@@ -18,6 +19,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -29,8 +31,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { getAuthPayload, logout } from "@/lib/auth"
 import { cn } from "@/lib/utils"
+import { UserAvatar } from "@/components/ui/user-avatar"
 
 type DashboardShellProps = {
   children: ReactNode
@@ -39,16 +43,17 @@ type DashboardShellProps = {
 type NavItem = {
   href: string
   label: string
+  userLabel?: string
   icon: React.ComponentType<{ className?: string }>
   adminOnly?: boolean
 }
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
-  { href: "/analytics", label: "Analytics", icon: BarChart3Icon, adminOnly: true },
-  { href: "/users", label: "User Management", icon: UsersRoundIcon, adminOnly: true },
+  { href: "/analytics", label: "Analytics", icon: BarChart3Icon },
+  { href: "/users", label: "User Management", userLabel: "Profile", icon: UsersRoundIcon },
   { href: "/equipment", label: "Equipment", icon: BoxesIcon },
-  { href: "/maintenance", label: "Maintenance", icon: Settings2Icon, adminOnly: true },
+  { href: "/maintenance", label: "Maintenance", icon: Settings2Icon },
 ]
 
 const pageMetadata: Record<
@@ -63,6 +68,7 @@ const pageMetadata: Record<
   "/users": { label: "User Management", showWelcome: false },
   "/equipment": { label: "Equipment", showWelcome: false },
   "/maintenance": { label: "Maintenance", showWelcome: false },
+  "/settings": { label: "Settings", showWelcome: false },
 }
 
 let shellHydrated = false
@@ -96,6 +102,7 @@ function getShellHydrationServerSnapshot() {
 export default function DashboardLayoutShell({ children }: DashboardShellProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const { data: currentUser } = useCurrentUser()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const hydrated = useSyncExternalStore(
@@ -104,6 +111,10 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
     getShellHydrationServerSnapshot,
   )
   const displayName = useMemo(() => {
+    if (currentUser?.name) {
+      return currentUser.name
+    }
+
     if (!hydrated) {
       return "System User"
     }
@@ -123,14 +134,29 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
     }
 
     return "System User"
-  }, [hydrated])
+  }, [currentUser, hydrated])
   const currentRole = useMemo(() => {
+    if (currentUser?.role) {
+      return currentUser.role
+    }
+
     if (!hydrated) {
       return null
     }
 
     return getAuthPayload()?.role ?? null
-  }, [hydrated])
+  }, [currentUser, hydrated])
+  const profileImagePath = useMemo(() => {
+    if (currentUser?.profileImagePath) {
+      return currentUser.profileImagePath
+    }
+
+    if (!hydrated) {
+      return null
+    }
+
+    return getAuthPayload()?.profileImagePath ?? null
+  }, [currentUser, hydrated])
   const visibleNavItems = useMemo(() => {
     if (currentRole === "SUPER_ADMIN") {
       return navItems
@@ -140,6 +166,10 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
   }, [currentRole])
 
   const currentPage = useMemo(() => {
+    if (pathname === "/users" && currentRole === "USER") {
+      return { label: "Profile", showWelcome: false }
+    }
+
     const direct = pageMetadata[pathname]
 
     if (direct) {
@@ -151,11 +181,20 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
     }
 
     return { label: "Dashboard", showWelcome: false }
-  }, [pathname])
+  }, [currentRole, pathname])
 
   const handleLogout = () => {
     logout()
     router.replace("/login")
+  }
+
+  const handleOpenSettings = () => {
+    if (currentRole === "USER") {
+      router.push("/users")
+      return
+    }
+
+    router.push("/settings")
   }
 
   return (
@@ -195,8 +234,10 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
           </div>
 
           <nav className="flex-1 space-y-2 px-2 py-4">
-            {visibleNavItems.map(({ href, label, icon: Icon }) => {
+            {visibleNavItems.map(({ href, label, userLabel, icon: Icon }) => {
               const active = pathname === href
+              const effectiveLabel =
+                currentRole === "USER" && userLabel ? userLabel : label
 
               return (
                 <Link
@@ -217,7 +258,7 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
                       collapsed ? "max-w-0 -translate-x-1 opacity-0" : "max-w-[10rem] translate-x-0 opacity-100",
                     )}
                   >
-                    {label}
+                    {effectiveLabel}
                   </span>
                 </Link>
               )
@@ -239,7 +280,7 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
             <SheetDescription>Monitoring System</SheetDescription>
           </SheetHeader>
           <div className="space-y-2 px-3 py-4">
-            {visibleNavItems.map(({ href, label, icon: Icon }) => (
+            {visibleNavItems.map(({ href, label, userLabel, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -250,7 +291,7 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
                 onClick={() => setMobileOpen(false)}
               >
                 <Icon className="size-4" />
-                {label}
+                {currentRole === "USER" && userLabel ? userLabel : label}
               </Link>
             ))}
           </div>
@@ -282,14 +323,21 @@ export default function DashboardLayoutShell({ children }: DashboardShellProps) 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="group h-auto gap-3 rounded-full px-2 py-1.5 hover:bg-slate-100">
-                    <span className="flex size-9 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
-                      {displayName.slice(0, 1).toUpperCase()}
-                    </span>
+                    <UserAvatar
+                      name={displayName}
+                      profileImagePath={profileImagePath}
+                      loading="eager"
+                    />
                     <span className="hidden text-sm font-medium text-slate-700 sm:inline">{displayName}</span>
                     <ChevronDownIcon className="anim-caret hidden size-4 text-slate-500 sm:inline group-data-[state=open]:rotate-180" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleOpenSettings} className="cursor-pointer">
+                    <SettingsIcon className="mr-2 size-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600">
                     <LogOutIcon className="mr-2 size-4" />
                     Logout

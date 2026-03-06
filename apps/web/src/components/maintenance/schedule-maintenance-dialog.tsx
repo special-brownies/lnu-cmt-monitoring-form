@@ -25,6 +25,10 @@ type ScheduleMaintenanceDialogProps = {
   lockEquipment?: boolean
   title?: string
   description?: string
+  submitLabel?: string
+  pendingLabel?: string
+  scheduledDateLabel?: string
+  showTechnicianField?: boolean
   onScheduled?: (record: MaintenanceRecord) => void
 }
 
@@ -64,6 +68,10 @@ export function ScheduleMaintenanceDialog({
   lockEquipment = false,
   title = "Schedule Maintenance",
   description = "Select equipment and schedule a maintenance task.",
+  submitLabel = "Schedule Maintenance",
+  pendingLabel = "Scheduling...",
+  scheduledDateLabel = "Scheduled Date",
+  showTechnicianField = true,
   onScheduled,
 }: ScheduleMaintenanceDialogProps) {
   const queryClient = useQueryClient()
@@ -279,25 +287,27 @@ export function ScheduleMaintenanceDialog({
             />
           </div>
 
-          <div className="space-y-1">
-            <label
-              htmlFor="maintenance-technician"
-              className="text-sm font-medium text-slate-700"
-            >
-              Assigned Technician / Staff (Optional)
-            </label>
-            <Input
-              id="maintenance-technician"
-              value={form.technician}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  technician: event.target.value,
-                }))
-              }
-              placeholder="e.g. John Dela Cruz"
-            />
-          </div>
+          {showTechnicianField && (
+            <div className="space-y-1">
+              <label
+                htmlFor="maintenance-technician"
+                className="text-sm font-medium text-slate-700"
+              >
+                Assigned Technician / Staff (Optional)
+              </label>
+              <Input
+                id="maintenance-technician"
+                value={form.technician}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    technician: event.target.value,
+                  }))
+                }
+                placeholder="e.g. John Dela Cruz"
+              />
+            </div>
+          )}
 
           <div className="space-y-1">
             <label
@@ -326,7 +336,7 @@ export function ScheduleMaintenanceDialog({
               htmlFor="maintenance-date"
               className="text-sm font-medium text-slate-700"
             >
-              Scheduled Date
+              {scheduledDateLabel}
             </label>
             <Input
               id="maintenance-date"
@@ -356,7 +366,7 @@ export function ScheduleMaintenanceDialog({
               type="submit"
               disabled={scheduleMutation.isPending || equipmentQuery.isLoading}
             >
-              {scheduleMutation.isPending ? "Scheduling..." : "Schedule Maintenance"}
+              {scheduleMutation.isPending ? pendingLabel : submitLabel}
             </Button>
           </DialogFooter>
         </form>

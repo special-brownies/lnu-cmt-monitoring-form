@@ -10,6 +10,7 @@ type JwtPayload = {
   email?: string
   employeeId?: string
   name?: string
+  profileImagePath?: string
 }
 
 @Injectable()
@@ -32,6 +33,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           email: true,
           role: true,
           status: true,
+          profileImagePath: true,
           createdAt: true,
         },
       })
@@ -49,6 +51,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         name: admin.name,
         email: admin.email,
         role: admin.role,
+        profileImagePath: admin.profileImagePath,
         createdAt: admin.createdAt,
       }
     }
@@ -60,6 +63,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           id: true,
           name: true,
           employeeId: true,
+          profileImagePath: true,
           createdAt: true,
         },
       })
@@ -73,6 +77,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         name: faculty.name,
         employeeId: faculty.employeeId,
         role: Role.USER,
+        profileImagePath: faculty.profileImagePath,
         createdAt: faculty.createdAt,
       }
     }

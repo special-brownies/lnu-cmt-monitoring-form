@@ -13,6 +13,7 @@ model User {
   password         String
   role             Role                       @default(SUPER_ADMIN)
   status           String                     @default("Active")
+  profileImagePath String?
   createdAt        DateTime                   @default(now())
   updatedAt        DateTime                   @updatedAt
   locationChanges  EquipmentLocationHistory[]
@@ -28,6 +29,7 @@ model Faculty {
   employeeId            String                 @unique
   password              String
   status                String                 @default("Active")
+  profileImagePath      String?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   equipments            Equipment[]

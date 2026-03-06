@@ -292,7 +292,7 @@ function AnalyticsContent() {
 
 export default function AnalyticsPage() {
   return (
-    <AuthGuard allowedRoles={["SUPER_ADMIN"]}>
+    <AuthGuard allowedRoles={["SUPER_ADMIN", "USER"]}>
       <AnalyticsContent />
     </AuthGuard>
   )

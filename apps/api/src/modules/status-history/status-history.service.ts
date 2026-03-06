@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
+import { Prisma, Role } from '@prisma/client'
 import { EquipmentService } from '../equipment/equipment.service'
 import { PrismaService } from '../../prisma/prisma.service'
 import { CreateStatusDto } from './dto/create-status.dto'
@@ -39,8 +39,11 @@ export class StatusHistoryService {
     }
   }
 
-  async findByEquipment(equipmentId: number) {
-    await this.equipmentService.ensureExists(equipmentId)
+  async findByEquipment(
+    equipmentId: number,
+    actor?: { id: string; role: Role },
+  ) {
+    await this.equipmentService.findOne(equipmentId, actor)
 
     return this.prisma.equipmentStatusHistory.findMany({
       where: { equipmentId },

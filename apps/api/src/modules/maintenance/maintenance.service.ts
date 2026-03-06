@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
-import { MaintenanceStatus, Prisma } from '@prisma/client'
+import { MaintenanceStatus, Prisma, Role } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto'
 
@@ -44,15 +44,32 @@ type MaintenanceFilters = {
   status?: string
 }
 
+type MaintenanceActor = {
+  id: string
+  role: Role
+  name?: string
+  employeeId?: string
+}
+
 @Injectable()
 export class MaintenanceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(filters: MaintenanceFilters = {}) {
+  async findAll(filters: MaintenanceFilters = {}, actor?: MaintenanceActor) {
     const normalizedStatus = filters.status?.trim().toUpperCase() ?? ''
     const normalizedSearch = filters.search?.trim().toLowerCase() ?? ''
+    const where: Prisma.MaintenanceRecordWhereInput = {}
+
+    if (actor?.role === Role.USER) {
+      where.equipment = {
+        is: {
+          facultyId: actor.id,
+        },
+      }
+    }
 
     const records = await this.prisma.maintenanceRecord.findMany({
+      where,
       include: maintenanceInclude,
       orderBy: [{ scheduledDate: 'desc' }, { createdAt: 'desc' }],
     })
@@ -73,9 +90,12 @@ export class MaintenanceService {
       .map((record) => this.formatRecord(record))
   }
 
-  async create(dto: CreateMaintenanceDto, scheduledById: string) {
-    const equipment = await this.prisma.equipment.findUnique({
-      where: { id: dto.equipmentId },
+  async create(dto: CreateMaintenanceDto, actor: MaintenanceActor) {
+    const equipment = await this.prisma.equipment.findFirst({
+      where: {
+        id: dto.equipmentId,
+        ...(actor.role === Role.USER ? { facultyId: actor.id } : {}),
+      },
       include: {
         statusHistory: {
           orderBy: [{ changedAt: 'desc' }, { id: 'desc' }],
@@ -114,7 +134,8 @@ export class MaintenanceService {
       )
     }
 
-    const notes = this.buildStartNotes(dto)
+    const scheduledById = actor.role === Role.SUPER_ADMIN ? actor.id : null
+    const notes = this.buildStartNotes(dto, actor)
     const created = await this.prisma.$transaction(async (tx) => {
       const record = await tx.maintenanceRecord.create({
         data: {
@@ -131,7 +152,7 @@ export class MaintenanceService {
         data: {
           equipmentId: dto.equipmentId,
           status: 'MAINTENANCE',
-          changedById: scheduledById,
+          changedById: actor.role === Role.SUPER_ADMIN ? actor.id : null,
           notes,
         },
       })
@@ -201,10 +222,20 @@ export class MaintenanceService {
     return this.formatRecord(result)
   }
 
-  private buildStartNotes(dto: CreateMaintenanceDto): string {
+  private buildStartNotes(
+    dto: CreateMaintenanceDto,
+    actor: MaintenanceActor,
+  ): string {
     const noteSegments = [
       `Maintenance started; scheduled for ${dto.scheduledDate.toISOString()}`,
     ]
+
+    if (actor.role === Role.USER) {
+      const requesterLabel = actor.employeeId
+        ? `${actor.name ?? 'User'} (${actor.employeeId})`
+        : actor.name ?? actor.id
+      noteSegments.push(`requested by ${requesterLabel}`)
+    }
 
     if (dto.technician?.trim()) {
       noteSegments.push(`technician: ${dto.technician.trim()}`)

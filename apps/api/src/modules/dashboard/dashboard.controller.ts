@@ -17,7 +17,7 @@ export class DashboardController {
   }
 
   @Get('analytics')
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.USER)
   async getAnalytics() {
     const data = await this.dashboardService.getAnalytics()
     return { success: true, data }

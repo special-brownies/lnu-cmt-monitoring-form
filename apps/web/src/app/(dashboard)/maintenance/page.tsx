@@ -7,6 +7,7 @@ import AuthGuard from "@/components/auth/AuthGuard"
 import { EmptyState } from "@/components/dashboard/empty-state"
 import { EquipmentTimelineDialog } from "@/components/equipment/equipment-timeline-dialog"
 import { ScheduleMaintenanceDialog } from "@/components/maintenance/schedule-maintenance-dialog"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { ActionIcon } from "@/components/ui/action-icon"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -62,13 +63,15 @@ function statusLabel(status: MaintenanceStatus) {
 
 export default function MaintenancePage() {
   return (
-    <AuthGuard allowedRoles={["SUPER_ADMIN"]}>
+    <AuthGuard allowedRoles={["SUPER_ADMIN", "USER"]}>
       <MaintenanceManagementContent />
     </AuthGuard>
   )
 }
 
 function MaintenanceManagementContent() {
+  const { data: currentUser } = useCurrentUser()
+  const isAdmin = currentUser?.role === "SUPER_ADMIN"
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<MaintenanceFilter>("ALL")
@@ -112,7 +115,9 @@ function MaintenanceManagementContent() {
     <div className="space-y-4">
       <Card className="border-slate-200">
         <CardHeader>
-          <CardTitle className="text-xl text-slate-900">Maintenance Management</CardTitle>
+          <CardTitle className="text-xl text-slate-900">
+            {isAdmin ? "Maintenance Management" : "Maintenance Requests"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -145,7 +150,7 @@ function MaintenanceManagementContent() {
 
             <Button onClick={() => setScheduleOpen(true)}>
               <PlusIcon className="size-4" />
-              Schedule Maintenance
+              {isAdmin ? "Schedule Maintenance" : "Request Maintenance"}
             </Button>
           </div>
 
@@ -227,26 +232,28 @@ function MaintenanceManagementContent() {
                               label="View maintenance note"
                               onClick={() => setSelectedNoteRecord(record)}
                             />
-                            <ActionIcon
-                              icon={CheckCircle2Icon}
-                              label="Mark maintenance as completed"
-                              className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                              disabled={
-                                completeMutation.isPending ||
-                                record.status !== "UNDER_MAINTENANCE"
-                              }
-                              onClick={async () => {
-                                if (record.status !== "UNDER_MAINTENANCE") {
-                                  return
+                            {isAdmin && (
+                              <ActionIcon
+                                icon={CheckCircle2Icon}
+                                label="Mark maintenance as completed"
+                                className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                disabled={
+                                  completeMutation.isPending ||
+                                  record.status !== "UNDER_MAINTENANCE"
                                 }
+                                onClick={async () => {
+                                  if (record.status !== "UNDER_MAINTENANCE") {
+                                    return
+                                  }
 
-                                try {
-                                  await completeMutation.mutateAsync(record.id)
-                                } catch {
-                                  // handled by mutation state
-                                }
-                              }}
-                            />
+                                  try {
+                                    await completeMutation.mutateAsync(record.id)
+                                  } catch {
+                                    // handled by mutation state
+                                  }
+                                }}
+                              />
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -262,6 +269,16 @@ function MaintenanceManagementContent() {
       <ScheduleMaintenanceDialog
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}
+        title={isAdmin ? "Schedule Maintenance" : "Request Maintenance"}
+        description={
+          isAdmin
+            ? "Select equipment and schedule a maintenance task."
+            : "Submit a maintenance request for equipment assigned to you."
+        }
+        submitLabel={isAdmin ? "Schedule Maintenance" : "Submit Request"}
+        pendingLabel={isAdmin ? "Scheduling..." : "Submitting..."}
+        scheduledDateLabel={isAdmin ? "Scheduled Date" : "Requested Date"}
+        showTechnicianField={isAdmin}
       />
 
       <EquipmentTimelineDialog

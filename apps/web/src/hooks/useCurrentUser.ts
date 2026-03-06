@@ -3,15 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { getToken } from '@/lib/auth'
-
-export type CurrentUser = {
-  id: string
-  role: 'SUPER_ADMIN' | 'USER'
-  name: string
-  email?: string
-  employeeId?: string
-  createdAt: string
-}
+import type { CurrentUser } from '@/types/auth'
 
 export function useCurrentUser() {
   const hasToken = Boolean(getToken())
